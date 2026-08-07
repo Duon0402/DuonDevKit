@@ -54,6 +54,20 @@ Result<string> result = Parse("42")
 always check `IsSuccess`/`IsFailure` (or use `Match`/`Map`/`Bind`) instead of accessing `Value`
 directly.
 
+#### Async chaining
+
+`MapAsync`/`BindAsync` extend the pattern to `Task<Result<T>>`, so multiple async steps (DB calls,
+HTTP calls, ...) can be chained without manually `await`-ing between each one:
+
+```csharp
+Result<decimal> total = await GetOrderAsync(orderId)         // Task<Result<Order>>
+    .BindAsync(o => ValidateOrderAsync(o))                   // async step that can itself fail
+    .MapAsync(o => o.Total);                                 // sync transform on the final value
+```
+
+Both `MapAsync` and `BindAsync` short-circuit on failure — if any step in the chain fails, the
+remaining steps are skipped and the original error propagates.
+
 ### Error
 
 `Error` is a record with static factory helpers for each `ErrorType`:
