@@ -13,14 +13,16 @@ namespace DuonDevKit.EntityFrameworkCore.DependencyInjection
         /// Registers <see cref="IUnitOfWork"/>, <see cref="IRepository{T}"/>, and <see cref="IRepository{T, TId}"/>
         /// backed by <typeparamref name="TContext"/> (already registered separately, e.g. via
         /// <c>AddDbContext&lt;TContext&gt;</c>). Also registers <see cref="NullCurrentUserProvider"/> as a
-        /// fallback <see cref="ICurrentUserProvider"/> if the app hasn't supplied its own.
+        /// fallback <see cref="ICurrentUserProvider"/> if the app hasn't supplied its own. Safe to call
+        /// alongside <c>DuonDevKit.Dapper</c>'s <c>AddDuonDevKitDapper&lt;TContext&gt;</c> — both map the
+        /// same <see cref="DbContext"/> registration idempotently.
         /// </summary>
         public static IServiceCollection AddDuonDevKitEntityFrameworkCore<TContext>(this IServiceCollection services)
             where TContext : DbContext
         {
             services.TryAddScoped<ICurrentUserProvider, NullCurrentUserProvider>();
 
-            services.AddScoped<DbContext>(sp => sp.GetRequiredService<TContext>());
+            services.TryAddScoped<DbContext>(sp => sp.GetRequiredService<TContext>());
             services.AddScoped<IUnitOfWork, UnitOfWork>();
             services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
             services.AddScoped(typeof(IRepository<,>), typeof(Repository<,>));

@@ -14,6 +14,9 @@ extension methods, built for .NET 8.
 - **DuonDevKit.AspNetCore** — maps `Result`/`Result<T>` to `IActionResult` (MVC) and `IResult`
   (Minimal APIs), so a controller/endpoint never has to switch on `Error.Type` itself.
 - **DuonDevKit.AspNetCore.Tests** — xUnit test suite for `DuonDevKit.AspNetCore`.
+- **DuonDevKit.Dapper** — runs raw SQL through the same `DbContext` connection/transaction as EF Core,
+  wrapped in `Result`/`Option<T>`, for queries a LINQ-based repository can't express cleanly.
+- **DuonDevKit.Dapper.Tests** — xUnit test suite for `DuonDevKit.Dapper`, backed by SQLite in-memory.
 
 ## Features
 
@@ -453,6 +456,35 @@ var app = builder.Build();
 app.UseDuonDevKitExceptionHandling();
 // ... app.UseRouting(), app.MapControllers(), etc.
 ```
+
+### Dapper
+
+`IDapperQueries` runs raw SQL for queries a LINQ-based repository can't express cleanly — complex
+joins, hand-tuned reporting queries, etc. — through the **same `DbContext` connection**, so it stays
+atomic when called inside a `UnitOfWork` transaction instead of running against a separate,
+unrelated connection:
+
+```csharp
+using DuonDevKit.Dapper;
+using DuonDevKit.Dapper.DependencyInjection;
+
+services.AddDuonDevKitDapper<AppDbContext>(); // safe alongside AddDuonDevKitEntityFrameworkCore<AppDbContext>()
+```
+
+```csharp
+Result<IReadOnlyList<OrderReportRow>> report = await dapperQueries.QueryAsync<OrderReportRow>(
+    "SELECT o.Id, o.Total, c.Name AS CustomerName FROM Orders o JOIN Customers c ON c.Id = o.CustomerId",
+    parameters: new { /* ... */ });
+
+Result<Option<Order>> match = await dapperQueries.QueryFirstOrDefaultAsync<Order>(
+    "SELECT * FROM Orders WHERE ExternalRef = @ExternalRef", new { ExternalRef = externalRef });
+
+Result<int> rowsAffected = await dapperQueries.ExecuteAsync(
+    "UPDATE Orders SET Status = @Status WHERE Id = @Id", new { Status = "Shipped", Id = orderId });
+```
+
+A `DbException` (bad SQL, constraint violation, ...) maps to `Result.Fail` instead of throwing; "no
+matching row" maps to `Option<T>.None` rather than a failure, same as `IRepository<T>.FindOneAsync`.
 
 ## Getting started
 
