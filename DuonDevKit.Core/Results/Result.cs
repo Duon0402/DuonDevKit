@@ -62,6 +62,20 @@ namespace DuonDevKit.Core.Results
             return IsSuccess ? onSuccess() : onFailure(Error);
         }
 
+        /// <summary>Returns the first failure among <paramref name="results"/>, or <see cref="Success()"/> if all succeeded (or none were given).</summary>
+        public static Result Combine(params Result[] results)
+        {
+            ArgumentNullException.ThrowIfNull(results);
+
+            foreach (var result in results)
+            {
+                if (result.IsFailure)
+                    return result;
+            }
+
+            return Success();
+        }
+
         /// <inheritdoc />
         public override string ToString()
             => IsSuccess ? "Success" : $"Failure: {Error.Code} - {Error.Message}";

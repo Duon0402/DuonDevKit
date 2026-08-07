@@ -1,4 +1,5 @@
-﻿using DuonDevKit.Core.Results;
+﻿using DuonDevKit.Core.Errors;
+using DuonDevKit.Core.Results;
 
 namespace DuonDevKit.Core.Extensions
 {
@@ -41,6 +42,22 @@ namespace DuonDevKit.Core.Extensions
                 return Result.Fail<TOut>(result.Error);
 
             return await binder(result.Value);
+        }
+
+        /// <summary>Awaits <paramref name="resultTask"/>, then applies <see cref="Result{T}.Ensure"/> using <paramref name="predicate"/>; propagates the error unchanged on an already-failed result, without invoking <paramref name="predicate"/>.</summary>
+        public static async Task<Result<T>> EnsureAsync<T>(this Task<Result<T>> resultTask, Func<T, bool> predicate, Error error)
+        {
+            var result = await resultTask;
+            return result.Ensure(predicate, error);
+        }
+
+        /// <summary>Awaits <paramref name="resultTask"/>, then converts a successful result into a failure carrying <paramref name="error"/> when the async <paramref name="predicate"/> returns <c>false</c>; propagates the error unchanged on an already-failed result, without invoking <paramref name="predicate"/>.</summary>
+        public static async Task<Result<T>> EnsureAsync<T>(this Task<Result<T>> resultTask, Func<T, Task<bool>> predicate, Error error)
+        {
+            var result = await resultTask;
+            if (result.IsFailure) return result;
+
+            return await predicate(result.Value) ? result : Result.Fail<T>(error);
         }
     }
 }

@@ -147,5 +147,98 @@ namespace DuonDevKit.Core.Tests.Extensions
             Assert.Equal(error, bound.Error);
             Assert.False(binderInvoked);
         }
+
+        [Fact]
+        public async Task EnsureAsync_SyncPredicate_OnSuccess_PredicatePasses_ReturnsSameValue()
+        {
+            var resultTask = Task.FromResult(Result.Success(10));
+            var error = Error.Business("BIZ001", "Value must be positive.");
+
+            var ensured = await resultTask.EnsureAsync(v => v > 0, error);
+
+            Assert.True(ensured.IsSuccess);
+            Assert.Equal(10, ensured.Value);
+        }
+
+        [Fact]
+        public async Task EnsureAsync_SyncPredicate_OnSuccess_PredicateFails_ReturnsFailure()
+        {
+            var resultTask = Task.FromResult(Result.Success(-1));
+            var error = Error.Business("BIZ001", "Value must be positive.");
+
+            var ensured = await resultTask.EnsureAsync(v => v > 0, error);
+
+            Assert.True(ensured.IsFailure);
+            Assert.Equal(error, ensured.Error);
+        }
+
+        [Fact]
+        public async Task EnsureAsync_SyncPredicate_OnFailure_DoesNotInvokePredicate_PropagatesOriginalError()
+        {
+            var originalError = Error.NotFound("NF001", "Not found.");
+            var resultTask = Task.FromResult(Result.Fail<int>(originalError));
+            var predicateInvoked = false;
+
+            var ensured = await resultTask.EnsureAsync(v =>
+            {
+                predicateInvoked = true;
+                return v > 0;
+            }, Error.Business("BIZ001", "Value must be positive."));
+
+            Assert.True(ensured.IsFailure);
+            Assert.Equal(originalError, ensured.Error);
+            Assert.False(predicateInvoked);
+        }
+
+        [Fact]
+        public async Task EnsureAsync_AsyncPredicate_OnSuccess_PredicatePasses_ReturnsSameValue()
+        {
+            var resultTask = Task.FromResult(Result.Success(10));
+            var error = Error.Business("BIZ001", "Value must be positive.");
+
+            var ensured = await resultTask.EnsureAsync(async v =>
+            {
+                await Task.Yield();
+                return v > 0;
+            }, error);
+
+            Assert.True(ensured.IsSuccess);
+            Assert.Equal(10, ensured.Value);
+        }
+
+        [Fact]
+        public async Task EnsureAsync_AsyncPredicate_OnSuccess_PredicateFails_ReturnsFailure()
+        {
+            var resultTask = Task.FromResult(Result.Success(-1));
+            var error = Error.Business("BIZ001", "Value must be positive.");
+
+            var ensured = await resultTask.EnsureAsync(async v =>
+            {
+                await Task.Yield();
+                return v > 0;
+            }, error);
+
+            Assert.True(ensured.IsFailure);
+            Assert.Equal(error, ensured.Error);
+        }
+
+        [Fact]
+        public async Task EnsureAsync_AsyncPredicate_OnFailure_DoesNotInvokePredicate_PropagatesOriginalError()
+        {
+            var originalError = Error.NotFound("NF001", "Not found.");
+            var resultTask = Task.FromResult(Result.Fail<int>(originalError));
+            var predicateInvoked = false;
+
+            var ensured = await resultTask.EnsureAsync(async v =>
+            {
+                predicateInvoked = true;
+                await Task.Yield();
+                return v > 0;
+            }, Error.Business("BIZ001", "Value must be positive."));
+
+            Assert.True(ensured.IsFailure);
+            Assert.Equal(originalError, ensured.Error);
+            Assert.False(predicateInvoked);
+        }
     }
 }

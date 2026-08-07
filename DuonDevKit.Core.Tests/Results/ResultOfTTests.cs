@@ -208,5 +208,47 @@ namespace DuonDevKit.Core.Tests.Results
 
             Assert.Equal("Failure: VAL001 - Invalid input.", result.ToString());
         }
+
+        [Fact]
+        public void Ensure_OnSuccess_PredicatePasses_ReturnsSameResult()
+        {
+            var result = Result.Success(10);
+            var error = Error.Business("BIZ001", "Value must be positive.");
+
+            var ensured = result.Ensure(v => v > 0, error);
+
+            Assert.True(ensured.IsSuccess);
+            Assert.Equal(10, ensured.Value);
+        }
+
+        [Fact]
+        public void Ensure_OnSuccess_PredicateFails_ReturnsFailure()
+        {
+            var result = Result.Success(-1);
+            var error = Error.Business("BIZ001", "Value must be positive.");
+
+            var ensured = result.Ensure(v => v > 0, error);
+
+            Assert.True(ensured.IsFailure);
+            Assert.Equal(error, ensured.Error);
+        }
+
+        [Fact]
+        public void Ensure_OnFailure_DoesNotInvokePredicate_PropagatesOriginalError()
+        {
+            var originalError = Error.NotFound("NF001", "Not found.");
+            var result = Result.Fail<int>(originalError);
+            var predicateInvoked = false;
+
+            var ensured = result.Ensure(v =>
+            {
+                predicateInvoked = true;
+                return v > 0;
+            }, Error.Business("BIZ001", "Value must be positive."));
+
+            Assert.True(ensured.IsFailure);
+            Assert.Equal(originalError, ensured.Error);
+            Assert.False(predicateInvoked);
+        }
     }
 }

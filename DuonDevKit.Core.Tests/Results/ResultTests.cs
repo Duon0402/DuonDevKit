@@ -119,5 +119,50 @@ namespace DuonDevKit.Core.Tests.Results
 
             Assert.Equal("Failure: VAL001 - Invalid input.", result.ToString());
         }
+
+        [Fact]
+        public void Combine_AllSuccess_ReturnsSuccess()
+        {
+            var result = Result.Combine(Result.Success(), Result.Success(), Result.Success());
+
+            Assert.True(result.IsSuccess);
+        }
+
+        [Fact]
+        public void Combine_OneFailure_ReturnsThatFailure()
+        {
+            var error = Error.Validation("VAL001", "Invalid input.");
+
+            var result = Result.Combine(Result.Success(), Result.Fail(error), Result.Success());
+
+            Assert.True(result.IsFailure);
+            Assert.Equal(error, result.Error);
+        }
+
+        [Fact]
+        public void Combine_MultipleFailures_ReturnsFirstFailure()
+        {
+            var firstError = Error.Validation("VAL001", "First error.");
+            var secondError = Error.Validation("VAL002", "Second error.");
+
+            var result = Result.Combine(Result.Fail(firstError), Result.Fail(secondError));
+
+            Assert.True(result.IsFailure);
+            Assert.Equal(firstError, result.Error);
+        }
+
+        [Fact]
+        public void Combine_NoResults_ReturnsSuccess()
+        {
+            var result = Result.Combine();
+
+            Assert.True(result.IsSuccess);
+        }
+
+        [Fact]
+        public void Combine_NullResults_Throws()
+        {
+            Assert.Throws<ArgumentNullException>(() => Result.Combine(null!));
+        }
     }
 }

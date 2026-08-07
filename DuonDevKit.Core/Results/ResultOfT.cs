@@ -88,6 +88,16 @@ namespace DuonDevKit.Core.Results
             return IsSuccess ? binder(Value) : Result<TOut>.Fail(Error);
         }
 
+        /// <summary>Converts a successful result into a failure carrying <paramref name="error"/> when <paramref name="predicate"/> returns <c>false</c>; propagates the error unchanged on an already-failed result, without invoking <paramref name="predicate"/>.</summary>
+        public Result<T> Ensure(Func<T, bool> predicate, Error error)
+        {
+            ArgumentNullException.ThrowIfNull(predicate);
+            ArgumentNullException.ThrowIfNull(error);
+
+            if (IsFailure) return this;
+            return predicate(Value) ? this : Fail(error);
+        }
+
         /// <inheritdoc />
         public override string ToString()
             => IsSuccess ? $"Success: {Value}" : $"Failure: {Error.Code} - {Error.Message}";
