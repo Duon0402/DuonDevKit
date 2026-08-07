@@ -1,8 +1,10 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="DuonDevKit.Core/DuonDevKit.Core.csproj" />
+    <Project Path="DuonDevKit.EntityFrameworkCore/DuonDevKit.EntityFrameworkCore.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="DuonDevKit.Core.Tests/DuonDevKit.Core.Tests.csproj" />
+    <Project Path="DuonDevKit.EntityFrameworkCore.Tests/DuonDevKit.EntityFrameworkCore.Tests.csproj" />
   </Folder>
 </Solution>
