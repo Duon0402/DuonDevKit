@@ -101,6 +101,15 @@ HttpStatusCode status = error.ToHttpStatusCode();
 "ABC".EqualsIgnoreCase("abc");      // true
 ```
 
+`EnumerableExtensions` adds common collection checks and membership tests:
+
+```csharp
+((IEnumerable<int>?)null).IsEmpty();    // true
+new List<int> { 1, 2, 3 }.IsNotEmpty(); // true
+2.In(1, 2, 3);                          // true
+4.NotIn(1, 2, 3);                       // true
+```
+
 ## Getting started
 
 Requires the .NET 8 SDK.
