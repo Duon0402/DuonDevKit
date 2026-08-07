@@ -39,6 +39,9 @@ jobs:
       - name: Pack DuonDevKit.AspNetCore
         run: dotnet pack DuonDevKit.AspNetCore/DuonDevKit.AspNetCore.csproj --no-build --configuration Release --output ./nupkgs
 
+      - name: Pack DuonDevKit.Dapper
+        run: dotnet pack DuonDevKit.Dapper/DuonDevKit.Dapper.csproj --no-build --configuration Release --output ./nupkgs
+
       # NuGet.org Trusted Publishing: exchanges this job's short-lived OIDC token for a temporary
       # NuGet API key — no static API key stored in repo Secrets.
       # NOTE: verify the action name/version below against NuGet.org's current Trusted Publishing
