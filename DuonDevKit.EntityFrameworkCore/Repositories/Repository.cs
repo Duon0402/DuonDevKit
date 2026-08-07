@@ -41,8 +41,33 @@ namespace DuonDevKit.EntityFrameworkCore.Repositories
         }
 
         /// <inheritdoc />
+        public async Task<Result<IReadOnlyList<T>>> AddRangeAsync(IEnumerable<T> entities, CancellationToken ct = default)
+        {
+            var list = entities as IReadOnlyList<T> ?? entities.ToList();
+            await _context.Set<T>().AddRangeAsync(list, ct);
+            return Result.Success<IReadOnlyList<T>>(list);
+        }
+
+        /// <inheritdoc />
+        public Result Update(T entity)
+        {
+            _context.Set<T>().Update(entity);
+            return Result.Success();
+        }
+
+        /// <inheritdoc />
+        public Result UpdateRange(IEnumerable<T> entities)
+        {
+            _context.Set<T>().UpdateRange(entities);
+            return Result.Success();
+        }
+
+        /// <inheritdoc />
         public Result Remove(T entity)
         {
+            if (_context.Entry(entity).State == EntityState.Detached)
+                _context.Attach(entity);
+
             if (entity is ISoftDelete softDeletable)
             {
                 softDeletable.IsDeleted = true;
@@ -51,6 +76,30 @@ namespace DuonDevKit.EntityFrameworkCore.Repositories
             {
                 _context.Set<T>().Remove(entity);
             }
+
+            return Result.Success();
+        }
+
+        /// <inheritdoc />
+        public Result RemoveRange(IEnumerable<T> entities)
+        {
+            var list = entities as IReadOnlyList<T> ?? entities.ToList();
+
+            var detached = list.Where(e => _context.Entry(e).State == EntityState.Detached).ToList();
+            if (detached.Count > 0)
+                _context.AttachRange(detached);
+
+            var hardDelete = new List<T>(list.Count);
+            foreach (var entity in list)
+            {
+                if (entity is ISoftDelete softDeletable)
+                    softDeletable.IsDeleted = true;
+                else
+                    hardDelete.Add(entity);
+            }
+
+            if (hardDelete.Count > 0)
+                _context.Set<T>().RemoveRange(hardDelete);
 
             return Result.Success();
         }
