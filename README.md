@@ -17,6 +17,10 @@ extension methods, built for .NET 8.
 - **DuonDevKit.Dapper** — runs raw SQL through the same `DbContext` connection/transaction as EF Core,
   wrapped in `Result`/`Option<T>`, for queries a LINQ-based repository can't express cleanly.
 - **DuonDevKit.Dapper.Tests** — xUnit test suite for `DuonDevKit.Dapper`, backed by SQLite in-memory.
+- **DuonDevKit.Jwt** — JWT access/refresh token issuance and validation, refresh-token rotation via
+  `Repository`/`UnitOfWork`, and an `ICurrentUserProvider` bridge so EF Core auditing attributes
+  changes to the authenticated user.
+- **DuonDevKit.Jwt.Tests** — xUnit test suite for `DuonDevKit.Jwt`.
 
 ## Features
 
@@ -191,6 +195,22 @@ public class OrderService(IObjectMapper mapper)
 
 `IObjectMapper` caches the resolved mapper per type pair, so only the first call for a given pair
 pays the DI lookup.
+
+### Password hashing
+
+`IPasswordHasher`/`Pbkdf2PasswordHasher` — PBKDF2-HMAC-SHA256 with a random salt per password, built
+entirely on `System.Security.Cryptography` (no third-party dependency):
+
+```csharp
+using DuonDevKit.Core.Security;
+
+IPasswordHasher hasher = new Pbkdf2PasswordHasher();
+string hashed = hasher.Hash(password);       // store this
+bool ok = hasher.Verify(password, hashed);   // on login
+```
+
+The iteration count is stored inside the hash itself, so raising it in a later release doesn't
+invalidate hashes already persisted — `Verify` always uses whatever count the hash was created with.
 
 ### Error
 
@@ -482,6 +502,43 @@ Result<Option<Order>> match = await dapperQueries.QueryFirstOrDefaultAsync<Order
 Result<int> rowsAffected = await dapperQueries.ExecuteAsync(
     "UPDATE Orders SET Status = @Status WHERE Id = @Id", new { Status = "Shipped", Id = orderId });
 ```
+
+### Jwt
+
+Issues and validates JWT access tokens, rotates persisted refresh tokens via
+`Repository`/`UnitOfWork`, and bridges the authenticated user into EF Core's auditing:
+
+```csharp
+using DuonDevKit.EntityFrameworkCore.DependencyInjection;
+using DuonDevKit.Jwt;
+using DuonDevKit.Jwt.DependencyInjection;
+
+services.AddDuonDevKitEntityFrameworkCore<AppDbContext>(); // call first
+services.AddDuonDevKitJwt(new JwtSettings
+{
+    SigningKey = builder.Configuration["Jwt:SigningKey"]!, // >= 32 bytes of entropy
+    Issuer = "MyApp",
+    Audience = "MyApp",
+});
+```
+
+Add a `DbSet<RefreshToken> RefreshTokens` to your `DbContext` and call
+`modelBuilder.ConfigureDuonDevKitRefreshTokens()` in `OnModelCreating` (indexes `Token`/`UserId`).
+
+```csharp
+// Login
+string accessToken = tokenGenerator.GenerateAccessToken(
+    [new Claim(ClaimTypes.NameIdentifier, user.Id), new Claim(ClaimTypes.Name, user.Name)]);
+Result<string> refreshToken = await refreshTokenService.IssueAsync(user.Id);
+
+// Refresh
+Result<RefreshTokenRotationResult> rotated = await refreshTokenService.RotateAsync(incomingRefreshToken);
+```
+
+`AddDuonDevKitJwt` also registers `HttpContextCurrentUserProvider` as `ICurrentUserProvider` — taking
+over from `AddDuonDevKitEntityFrameworkCore`'s `NullCurrentUserProvider` fallback specifically (never
+from an app-supplied `ICurrentUserProvider`, registered before or after this call) — so `CreatedBy`/
+`UpdatedBy`/`DeletedBy` are automatically filled from the current request's JWT claims.
 
 A `DbException` (bad SQL, constraint violation, ...) maps to `Result.Fail` instead of throwing; "no
 matching row" maps to `Option<T>.None` rather than a failure, same as `IRepository<T>.FindOneAsync`.

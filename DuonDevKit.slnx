@@ -4,11 +4,13 @@
     <Project Path="DuonDevKit.EntityFrameworkCore/DuonDevKit.EntityFrameworkCore.csproj" />
     <Project Path="DuonDevKit.AspNetCore/DuonDevKit.AspNetCore.csproj" />
     <Project Path="DuonDevKit.Dapper/DuonDevKit.Dapper.csproj" />
+    <Project Path="DuonDevKit.Jwt/DuonDevKit.Jwt.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="DuonDevKit.Core.Tests/DuonDevKit.Core.Tests.csproj" />
     <Project Path="DuonDevKit.EntityFrameworkCore.Tests/DuonDevKit.EntityFrameworkCore.Tests.csproj" />
     <Project Path="DuonDevKit.AspNetCore.Tests/DuonDevKit.AspNetCore.Tests.csproj" />
     <Project Path="DuonDevKit.Dapper.Tests/DuonDevKit.Dapper.Tests.csproj" />
+    <Project Path="DuonDevKit.Jwt.Tests/DuonDevKit.Jwt.Tests.csproj" />
   </Folder>
 </Solution>
