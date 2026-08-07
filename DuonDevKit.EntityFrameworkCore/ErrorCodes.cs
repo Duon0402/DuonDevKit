@@ -11,5 +11,14 @@ namespace DuonDevKit.EntityFrameworkCore
 
         /// <summary>An unexpected <c>DbUpdateException</c> occurred while saving via <see cref="UnitOfWork"/>.</summary>
         public const string UnexpectedDbError = "DB002";
+
+        /// <summary><see cref="UnitOfWork.BeginTransactionAsync"/> was called while a transaction was already active.</summary>
+        public const string TransactionAlreadyActive = "DB003";
+
+        /// <summary><see cref="UnitOfWork.CommitTransactionAsync"/> or <see cref="UnitOfWork.RollbackTransactionAsync"/> was called with no active transaction.</summary>
+        public const string NoActiveTransaction = "DB004";
+
+        /// <summary>Beginning, committing, or rolling back a transaction failed.</summary>
+        public const string TransactionError = "DB005";
     }
 }

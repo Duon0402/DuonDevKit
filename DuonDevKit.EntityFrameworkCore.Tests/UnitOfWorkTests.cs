@@ -1,3 +1,6 @@
+using DuonDevKit.Core.Errors;
+using DuonDevKit.Core.Results;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 
 namespace DuonDevKit.EntityFrameworkCore.Tests
@@ -24,6 +27,36 @@ namespace DuonDevKit.EntityFrameworkCore.Tests
             return new TestDbContext(options);
         }
 
+        /// <summary>
+        /// Backs a <see cref="TestDbContext"/> with a real SQLite database (in-memory, via a kept-open
+        /// connection) instead of the EF Core InMemory provider, since InMemory treats transactions as a
+        /// no-op and cannot exercise real commit/rollback semantics.
+        /// </summary>
+        private sealed class SqliteFixture : IDisposable
+        {
+            private readonly SqliteConnection _connection;
+            public TestDbContext Context { get; }
+
+            public SqliteFixture()
+            {
+                _connection = new SqliteConnection("DataSource=:memory:");
+                _connection.Open();
+
+                var options = new DbContextOptionsBuilder<TestDbContext>()
+                    .UseSqlite(_connection)
+                    .Options;
+
+                Context = new TestDbContext(options);
+                Context.Database.EnsureCreated();
+            }
+
+            public void Dispose()
+            {
+                Context.Dispose();
+                _connection.Dispose();
+            }
+        }
+
         [Fact]
         public async Task SaveChangesAsync_NoConflict_ReturnsSuccess()
         {
@@ -48,6 +81,155 @@ namespace DuonDevKit.EntityFrameworkCore.Tests
             var result = await unitOfWork.SaveChangesAsync();
 
             Assert.True(result.IsFailure);
+        }
+
+        [Fact]
+        public void HasChanges_NoPendingChanges_ReturnsFalse()
+        {
+            using var context = CreateContext();
+            var unitOfWork = new UnitOfWork(context);
+
+            Assert.False(unitOfWork.HasChanges());
+        }
+
+        [Fact]
+        public void HasChanges_WithPendingAdd_ReturnsTrue()
+        {
+            using var context = CreateContext();
+            context.TestEntities.Add(new TestEntity { Name = "A" });
+            var unitOfWork = new UnitOfWork(context);
+
+            Assert.True(unitOfWork.HasChanges());
+        }
+
+        [Fact]
+        public async Task BeginTransactionAsync_WhileAlreadyActive_ReturnsFailure()
+        {
+            using var fixture = new SqliteFixture();
+            var unitOfWork = new UnitOfWork(fixture.Context);
+            await unitOfWork.BeginTransactionAsync();
+
+            var result = await unitOfWork.BeginTransactionAsync();
+
+            Assert.True(result.IsFailure);
+        }
+
+        [Fact]
+        public async Task CommitTransactionAsync_WithNoActiveTransaction_ReturnsFailure()
+        {
+            using var fixture = new SqliteFixture();
+            var unitOfWork = new UnitOfWork(fixture.Context);
+
+            var result = await unitOfWork.CommitTransactionAsync();
+
+            Assert.True(result.IsFailure);
+        }
+
+        [Fact]
+        public async Task RollbackTransactionAsync_WithNoActiveTransaction_ReturnsFailure()
+        {
+            using var fixture = new SqliteFixture();
+            var unitOfWork = new UnitOfWork(fixture.Context);
+
+            var result = await unitOfWork.RollbackTransactionAsync();
+
+            Assert.True(result.IsFailure);
+        }
+
+        [Fact]
+        public async Task BeginThenCommitTransactionAsync_PersistsChangesAndAllowsANewTransactionAfterward()
+        {
+            using var fixture = new SqliteFixture();
+            var unitOfWork = new UnitOfWork(fixture.Context);
+
+            var beginResult = await unitOfWork.BeginTransactionAsync();
+            fixture.Context.TestEntities.Add(new TestEntity { Name = "A" });
+            await unitOfWork.SaveChangesAsync();
+            var commitResult = await unitOfWork.CommitTransactionAsync();
+            var secondBeginResult = await unitOfWork.BeginTransactionAsync();
+
+            Assert.True(beginResult.IsSuccess);
+            Assert.True(commitResult.IsSuccess);
+            Assert.True(secondBeginResult.IsSuccess);
+            Assert.Single(fixture.Context.TestEntities.ToList());
+        }
+
+        [Fact]
+        public async Task BeginThenRollbackTransactionAsync_DiscardsChanges()
+        {
+            using var fixture = new SqliteFixture();
+            var unitOfWork = new UnitOfWork(fixture.Context);
+
+            await unitOfWork.BeginTransactionAsync();
+            fixture.Context.TestEntities.Add(new TestEntity { Name = "A" });
+            await unitOfWork.SaveChangesAsync();
+            var rollbackResult = await unitOfWork.RollbackTransactionAsync();
+
+            Assert.True(rollbackResult.IsSuccess);
+            Assert.Empty(fixture.Context.TestEntities.ToList());
+        }
+
+        [Fact]
+        public async Task ExecuteInTransactionAsync_SuccessfulOperation_CommitsAndReturnsValue()
+        {
+            using var fixture = new SqliteFixture();
+            var unitOfWork = new UnitOfWork(fixture.Context);
+
+            var result = await unitOfWork.ExecuteInTransactionAsync(async ct =>
+            {
+                await fixture.Context.TestEntities.AddAsync(new TestEntity { Name = "A" }, ct);
+                return Result.Success(42);
+            });
+
+            Assert.True(result.IsSuccess);
+            Assert.Equal(42, result.Value);
+            Assert.Single(fixture.Context.TestEntities.ToList());
+        }
+
+        [Fact]
+        public async Task ExecuteInTransactionAsync_FailingOperation_RollsBackAndPropagatesError()
+        {
+            using var fixture = new SqliteFixture();
+            var unitOfWork = new UnitOfWork(fixture.Context);
+            var error = Error.Business("TEST001", "Simulated business failure.");
+
+            var result = await unitOfWork.ExecuteInTransactionAsync<int>(async ct =>
+            {
+                await fixture.Context.TestEntities.AddAsync(new TestEntity { Name = "A" }, ct);
+                return Result.Fail<int>(error);
+            });
+
+            Assert.True(result.IsFailure);
+            Assert.Equal(error, result.Error);
+            Assert.Empty(fixture.Context.TestEntities.ToList());
+        }
+
+        [Fact]
+        public async Task ExecuteInTransactionAsync_NonGenericOverload_SuccessfulOperation_CommitsChanges()
+        {
+            using var fixture = new SqliteFixture();
+            var unitOfWork = new UnitOfWork(fixture.Context);
+
+            var result = await unitOfWork.ExecuteInTransactionAsync(async ct =>
+            {
+                await fixture.Context.TestEntities.AddAsync(new TestEntity { Name = "A" }, ct);
+                return Result.Success();
+            });
+
+            Assert.True(result.IsSuccess);
+            Assert.Single(fixture.Context.TestEntities.ToList());
+        }
+
+        [Fact]
+        public async Task DisposeAsync_WithActiveTransaction_DisposesItWithoutThrowing()
+        {
+            using var fixture = new SqliteFixture();
+            var unitOfWork = new UnitOfWork(fixture.Context);
+            await unitOfWork.BeginTransactionAsync();
+
+            var exception = await Record.ExceptionAsync(() => unitOfWork.DisposeAsync().AsTask());
+
+            Assert.Null(exception);
         }
     }
 }
