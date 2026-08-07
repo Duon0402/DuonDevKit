@@ -6,9 +6,12 @@ namespace DuonDevKit.EntityFrameworkCore.Tests.Auditing
     public class AuditSaveChangesInterceptorTests
     {
         private static TestDbContext CreateContext(StubCurrentUserProvider currentUserProvider)
+            => CreateContext(currentUserProvider, Guid.NewGuid().ToString());
+
+        private static TestDbContext CreateContext(StubCurrentUserProvider currentUserProvider, string databaseName)
         {
             var options = new DbContextOptionsBuilder<TestDbContext>()
-                .UseInMemoryDatabase(Guid.NewGuid().ToString())
+                .UseInMemoryDatabase(databaseName)
                 .AddInterceptors(new AuditSaveChangesInterceptor(currentUserProvider))
                 .Options;
 
@@ -114,6 +117,29 @@ namespace DuonDevKit.EntityFrameworkCore.Tests.Auditing
             await context.SaveChangesAsync();
 
             Assert.Equal("manual-override", entity.DeletedBy);
+        }
+
+        [Fact]
+        public async Task UpdatingViaContextUpdate_DisconnectedEntity_StillFillsUpdatedAtAndUpdatedBy()
+        {
+            var user = new StubCurrentUserProvider { UserId = "alice" };
+            var databaseName = Guid.NewGuid().ToString();
+            int id;
+            using (var context = CreateContext(user, databaseName))
+            {
+                var entity = new TestEntity { Name = "A" };
+                context.TestEntities.Add(entity);
+                await context.SaveChangesAsync();
+                id = entity.Id;
+            }
+
+            using var updateContext = CreateContext(user, databaseName);
+            var detached = new TestEntity { Id = id, Name = "A-changed" };
+            updateContext.TestEntities.Update(detached);
+            await updateContext.SaveChangesAsync();
+
+            Assert.NotNull(detached.UpdatedAt);
+            Assert.Equal("alice", detached.UpdatedBy);
         }
 
         [Fact]

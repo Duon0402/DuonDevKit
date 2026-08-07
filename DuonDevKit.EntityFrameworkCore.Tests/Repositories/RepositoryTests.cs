@@ -6,9 +6,12 @@ namespace DuonDevKit.EntityFrameworkCore.Tests.Repositories
     public class RepositoryTests
     {
         private static TestDbContext CreateContext()
+            => CreateContext(Guid.NewGuid().ToString());
+
+        private static TestDbContext CreateContext(string databaseName)
         {
             var options = new DbContextOptionsBuilder<TestDbContext>()
-                .UseInMemoryDatabase(Guid.NewGuid().ToString())
+                .UseInMemoryDatabase(databaseName)
                 .Options;
 
             return new TestDbContext(options);
@@ -120,6 +123,127 @@ namespace DuonDevKit.EntityFrameworkCore.Tests.Repositories
 
             Assert.True(result.IsSuccess);
             Assert.Null(await context.PlainEntities.FindAsync(entity.Id));
+        }
+
+        [Fact]
+        public async Task Remove_DetachedSoftDeleteEntity_AttachesAndPersistsInsteadOfSilentlyNoOp()
+        {
+            var databaseName = Guid.NewGuid().ToString();
+            int id;
+            using (var context = CreateContext(databaseName))
+            {
+                var entity = new TestEntity { Name = "A" };
+                context.TestEntities.Add(entity);
+                await context.SaveChangesAsync();
+                id = entity.Id;
+            }
+
+            using var removeContext = CreateContext(databaseName);
+            var repository = new Repository<TestEntity>(removeContext);
+            var detached = new TestEntity { Id = id };
+
+            var result = repository.Remove(detached);
+            await removeContext.SaveChangesAsync();
+
+            Assert.True(result.IsSuccess);
+            using var verifyContext = CreateContext(databaseName);
+            var stillThere = await verifyContext.TestEntities.IgnoreQueryFilters().SingleAsync(e => e.Id == id);
+            Assert.True(stillThere.IsDeleted);
+        }
+
+        [Fact]
+        public async Task AddRangeAsync_ValidEntities_ReturnsSuccessAndPersistsAll()
+        {
+            using var context = CreateContext();
+            var repository = new Repository<TestEntity>(context);
+            var entities = new[] { new TestEntity { Name = "A" }, new TestEntity { Name = "B" } };
+
+            var result = await repository.AddRangeAsync(entities);
+            await context.SaveChangesAsync();
+
+            Assert.True(result.IsSuccess);
+            Assert.Equal(2, result.Value.Count);
+            Assert.Equal(2, context.TestEntities.Count());
+        }
+
+        [Fact]
+        public async Task Update_DetachedEntity_AttachesAndPersistsChanges()
+        {
+            var databaseName = Guid.NewGuid().ToString();
+            int id;
+            using (var context = CreateContext(databaseName))
+            {
+                var entity = new TestEntity { Name = "A" };
+                context.TestEntities.Add(entity);
+                await context.SaveChangesAsync();
+                id = entity.Id;
+            }
+
+            using var updateContext = CreateContext(databaseName);
+            var repository = new Repository<TestEntity>(updateContext);
+            var detached = new TestEntity { Id = id, Name = "A-changed" };
+
+            var result = repository.Update(detached);
+            await updateContext.SaveChangesAsync();
+
+            Assert.True(result.IsSuccess);
+            using var verifyContext = CreateContext(databaseName);
+            var reloaded = await verifyContext.TestEntities.FindAsync(id);
+            Assert.Equal("A-changed", reloaded!.Name);
+        }
+
+        [Fact]
+        public async Task UpdateRange_DetachedEntities_AttachesAndPersistsAllChanges()
+        {
+            var databaseName = Guid.NewGuid().ToString();
+            int firstId, secondId;
+            using (var context = CreateContext(databaseName))
+            {
+                var first = new TestEntity { Name = "A" };
+                var second = new TestEntity { Name = "B" };
+                context.TestEntities.AddRange(first, second);
+                await context.SaveChangesAsync();
+                firstId = first.Id;
+                secondId = second.Id;
+            }
+
+            using var updateContext = CreateContext(databaseName);
+            var repository = new Repository<TestEntity>(updateContext);
+            var detached = new[]
+            {
+                new TestEntity { Id = firstId, Name = "A-changed" },
+                new TestEntity { Id = secondId, Name = "B-changed" },
+            };
+
+            var result = repository.UpdateRange(detached);
+            await updateContext.SaveChangesAsync();
+
+            Assert.True(result.IsSuccess);
+            using var verifyContext = CreateContext(databaseName);
+            Assert.Equal("A-changed", (await verifyContext.TestEntities.FindAsync(firstId))!.Name);
+            Assert.Equal("B-changed", (await verifyContext.TestEntities.FindAsync(secondId))!.Name);
+        }
+
+        [Fact]
+        public async Task RemoveRange_MixOfSoftAndHardDeleteEntities_AppliesEachEntitysOwnDeleteStrategy()
+        {
+            using var context = CreateContext();
+            var softDeletable = new TestEntity { Name = "A" };
+            var plain = new PlainEntity { Name = "B" };
+            context.TestEntities.Add(softDeletable);
+            context.PlainEntities.Add(plain);
+            await context.SaveChangesAsync();
+            var softDeleteRepo = new Repository<TestEntity>(context);
+            var plainRepo = new Repository<PlainEntity>(context);
+
+            var softResult = softDeleteRepo.RemoveRange([softDeletable]);
+            var plainResult = plainRepo.RemoveRange([plain]);
+            await context.SaveChangesAsync();
+
+            Assert.True(softResult.IsSuccess);
+            Assert.True(plainResult.IsSuccess);
+            Assert.True(context.TestEntities.IgnoreQueryFilters().Single(e => e.Id == softDeletable.Id).IsDeleted);
+            Assert.Null(await context.PlainEntities.FindAsync(plain.Id));
         }
     }
 }

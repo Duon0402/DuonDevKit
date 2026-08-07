@@ -49,22 +49,19 @@ namespace DuonDevKit.EntityFrameworkCore.Auditing
 
                 if (entry.State == EntityState.Modified && entry.Entity is ICanUpdate updatable)
                 {
-                    if (!entry.Property(nameof(ICanUpdate.UpdatedAt)).IsModified)
+                    var updatedAtProperty = entry.Property(nameof(ICanUpdate.UpdatedAt));
+                    if (Equals(updatedAtProperty.OriginalValue, updatedAtProperty.CurrentValue))
                         updatable.UpdatedAt = now;
 
-                    if (!entry.Property(nameof(ICanUpdate.UpdatedBy)).IsModified)
+                    var updatedByProperty = entry.Property(nameof(ICanUpdate.UpdatedBy));
+                    if (Equals(updatedByProperty.OriginalValue, updatedByProperty.CurrentValue))
                         updatable.UpdatedBy = userId;
                 }
 
-                if (entry.State == EntityState.Modified &&
-                    entry.Entity is ISoftDelete softDeletable &&
-                    entry.Property(nameof(ISoftDelete.IsDeleted)).IsModified &&
-                    softDeletable.IsDeleted)
+                if (entry.State == EntityState.Modified && entry.Entity is ISoftDelete softDeletable && softDeletable.IsDeleted)
                 {
-                    if (!entry.Property(nameof(ISoftDelete.DeletedAt)).IsModified)
-                        softDeletable.DeletedAt = now;
-                    if (!entry.Property(nameof(ISoftDelete.DeletedBy)).IsModified)
-                        softDeletable.DeletedBy = userId;
+                    if (softDeletable.DeletedAt is null) softDeletable.DeletedAt = now;
+                    if (softDeletable.DeletedBy is null) softDeletable.DeletedBy = userId;
                 }
             }
         }
