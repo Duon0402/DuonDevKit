@@ -38,7 +38,7 @@ namespace DuonDevKit.AspNetCore
             return new ObjectResult(problem) { StatusCode = problem.Status };
         }
 
-        private static IResult ToProblemApiResult(Error error)
+        internal static IResult ToProblemApiResult(Error error)
         {
             var problem = ToProblemDetails(error);
             return Results.Problem(

@@ -350,6 +350,20 @@ app.MapGet("/orders/{id}", async (string id, IRepository<Order> repository) =>
 A successful `Result` (no value) maps to `204 No Content`; a successful `Result<T>` maps to
 `200 OK` with `Value` as the body.
 
+#### Unhandled exceptions
+
+`UseDuonDevKitExceptionHandling()` catches anything that reaches the middleware pipeline unhandled
+and responds with the same `ProblemDetails` shape as a failed `Result` (`500`,
+`Error.Unexpected`) — a bug behaves the same way an expected failure would instead of leaking the
+framework's default error response. It logs the original exception via `ILoggerFactory` first.
+Register it early in the pipeline, before routing/MVC:
+
+```csharp
+var app = builder.Build();
+app.UseDuonDevKitExceptionHandling();
+// ... app.UseRouting(), app.MapControllers(), etc.
+```
+
 ## Getting started
 
 Requires the .NET 8 SDK.
