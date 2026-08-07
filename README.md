@@ -7,6 +7,9 @@ extension methods, built for .NET 8.
 
 - **DuonDevKit.Core** — core library: `Result`/`Result<T>`, `Error`, and extension methods.
 - **DuonDevKit.Core.Tests** — xUnit test suite for `DuonDevKit.Core`.
+- **DuonDevKit.EntityFrameworkCore** — Result-based Repository/UnitOfWork pattern for EF Core, plus
+  automatic audit-field population (created/updated/soft-deleted by + at).
+- **DuonDevKit.EntityFrameworkCore.Tests** — xUnit test suite using EF Core's InMemory provider.
 
 ## Features
 
@@ -109,6 +112,61 @@ new List<int> { 1, 2, 3 }.IsNotEmpty(); // true
 2.In(1, 2, 3);                          // true
 4.NotIn(1, 2, 3);                       // true
 ```
+
+### EntityFrameworkCore (Repository/UnitOfWork + audit)
+
+`Repository<T>`/`UnitOfWork` wrap EF Core in the same `Result` pattern — no exceptions for expected
+failure paths, and no base `Entity<TId>` requirement:
+
+```csharp
+using DuonDevKit.EntityFrameworkCore;
+using DuonDevKit.EntityFrameworkCore.Repositories;
+
+var repository = new Repository<Order>(dbContext);
+var unitOfWork = new UnitOfWork(dbContext);
+
+Result<Order> order = await repository.GetByIdAsync([orderId]);
+Result<IReadOnlyList<Order>> pending = await repository.ListAsync(o => o.Status == "Pending");
+
+var added = await repository.AddAsync(new Order { /* ... */ });
+Result saveResult = await unitOfWork.SaveChangesAsync(); // DbUpdateException -> Result.Fail, never throws
+```
+
+Entities inheriting `BaseEntity<TId>` (or the non-generic `BaseEntity` for `string` ids) get a typed
+`GetByIdAsync(TId id)` via `Repository<T, TId>`, alongside the untyped `object[] keyValues` overload
+on `Repository<T>`.
+
+#### Audit fields
+
+Opt an entity into automatic audit tracking by implementing one or more marker interfaces:
+
+```csharp
+public class Order : ICanCreate, ICanUpdate, ISoftDelete
+{
+    public DateTime CreatedAt { get; set; }
+    public string? CreatedBy { get; set; }
+    public DateTime? UpdatedAt { get; set; }
+    public string? UpdatedBy { get; set; }
+    public bool IsDeleted { get; set; }
+    public DateTime? DeletedAt { get; set; }
+    public string? DeletedBy { get; set; }
+}
+```
+
+Register `AuditSaveChangesInterceptor` on your `DbContext` (it never touches `HttpContext` directly —
+implement `ICurrentUserProvider` to supply the acting user's id from wherever your app tracks it):
+
+```csharp
+optionsBuilder.AddInterceptors(new AuditSaveChangesInterceptor(currentUserProvider));
+```
+
+On every save, the interceptor fills `CreatedAt`/`CreatedBy` on new entities (only if still at their
+default value), and refreshes `UpdatedAt`/`UpdatedBy`/`DeletedAt`/`DeletedBy` on modified entities
+(only if the caller didn't already set them explicitly). `Repository<T>.Remove(entity)` automatically
+soft-deletes (`IsDeleted = true`) instead of hard-deleting when `entity` implements `ISoftDelete`.
+
+Call `modelBuilder.ApplySoftDeleteQueryFilter()` once in your `DbContext.OnModelCreating` to exclude
+soft-deleted rows from queries by default (`.IgnoreQueryFilters()` includes them when needed).
 
 ## Getting started
 
