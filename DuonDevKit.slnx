@@ -2,4 +2,7 @@
   <Folder Name="/src/">
     <Project Path="DuonDevKit.Core/DuonDevKit.Core.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="DuonDevKit.Core.Tests/DuonDevKit.Core.Tests.csproj" />
+  </Folder>
 </Solution>
