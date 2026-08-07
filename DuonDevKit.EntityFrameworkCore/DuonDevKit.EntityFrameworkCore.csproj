@@ -8,7 +8,7 @@
 
   <PropertyGroup>
     <PackageId>DuonDevKit.EntityFrameworkCore</PackageId>
-    <Version>0.2.0</Version>
+    <Version>0.3.0</Version>
     <Description>EF Core Repository/UnitOfWork built on DuonDevKit.Core's Result pattern, plus automatic audit fields (ICanCreate/ICanUpdate/ISoftDelete) and soft-delete query filtering.</Description>
     <PackageTags>entity-framework-core;repository;unit-of-work;result;audit;soft-delete;dotnet</PackageTags>
     <IsPackable>true</IsPackable>

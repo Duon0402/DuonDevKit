@@ -8,7 +8,7 @@
 
   <PropertyGroup>
     <PackageId>DuonDevKit.Core</PackageId>
-    <Version>0.2.0</Version>
+    <Version>0.3.0</Version>
     <Description>Railway-oriented Result/Error pattern for .NET — Result, Result&lt;T&gt;, Error, Option&lt;T&gt;, Guard clauses, and async chaining extensions.</Description>
     <PackageTags>result;railway-oriented-programming;error-handling;option;guard-clauses;dotnet</PackageTags>
     <IsPackable>true</IsPackable>
