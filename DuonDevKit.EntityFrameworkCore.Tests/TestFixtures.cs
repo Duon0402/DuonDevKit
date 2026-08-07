@@ -78,6 +78,21 @@ namespace DuonDevKit.EntityFrameworkCore.Tests
     {
     }
 
+    /// <summary>One-to-many pair used to test <c>include</c> (eager loading) support.</summary>
+    public class BlogPostEntity
+    {
+        public int Id { get; set; }
+        public string Title { get; set; } = string.Empty;
+        public List<CommentEntity> Comments { get; set; } = [];
+    }
+
+    public class CommentEntity
+    {
+        public int Id { get; set; }
+        public int BlogPostEntityId { get; set; }
+        public string Text { get; set; } = string.Empty;
+    }
+
     /// <summary>Minimal DbContext used across the test suite, backed by the EF Core InMemory provider.</summary>
     public class TestDbContext : DbContext
     {
@@ -90,6 +105,8 @@ namespace DuonDevKit.EntityFrameworkCore.Tests
         public DbSet<KeyedTestEntity> KeyedTestEntities => Set<KeyedTestEntity>();
         public DbSet<Vehicle> Vehicles => Set<Vehicle>();
         public DbSet<Animal> Animals => Set<Animal>();
+        public DbSet<BlogPostEntity> BlogPosts => Set<BlogPostEntity>();
+        public DbSet<CommentEntity> Comments => Set<CommentEntity>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

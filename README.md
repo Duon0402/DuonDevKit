@@ -254,6 +254,50 @@ Entities inheriting `BaseEntity<TId>` (or the non-generic `BaseEntity` for `stri
 `GetByIdAsync(TId id)` via `Repository<T, TId>`, alongside the untyped `object[] keyValues` overload
 on `Repository<T>`.
 
+#### Querying
+
+`FindOneAsync` looks up a single entity by an arbitrary predicate, returning `Option<T>` — unlike
+`GetByIdAsync`, "not found" isn't a failure here, just an absent value:
+
+```csharp
+Option<Order> match = await repository.FindOneAsync(o => o.ExternalRef == externalRef);
+```
+
+`ListAsync`/`ListPagedAsync`/`FindOneAsync` all accept an `include` delegate to eager-load navigation
+properties:
+
+```csharp
+Result<IReadOnlyList<Order>> orders = await repository.ListAsync(
+    filter: o => o.Status == "Pending",
+    include: q => q.Include(o => o.Customer));
+```
+
+For anything the fixed shape of those methods can't express — joins, projections, `GroupBy`, or just
+a query you want full control over — `Query(asNoTracking)` returns the raw `IQueryable<T>` (still
+subject to the soft-delete filter) for you to compose and execute yourself:
+
+```csharp
+var topCustomers = await repository.Query(asNoTracking: true)
+    .GroupBy(o => o.CustomerId)
+    .Select(g => new { CustomerId = g.Key, Total = g.Sum(o => o.Total) })
+    .OrderByDescending(x => x.Total)
+    .Take(10)
+    .ToListAsync();
+```
+
+#### Id generation
+
+`Repository<T, TId>.AddAsync`/`AddRangeAsync` assign a new id via an injected `IEntityIdGenerator<TId>`
+when an entity's `Id` is still at its default value — opt-in, for apps that generate ids client-side
+(e.g. a GUID string) instead of relying on the database:
+
+```csharp
+services.AddScoped<IEntityIdGenerator<string>, GuidStringIdGenerator>(); // ready-made GUID-string generator
+```
+
+Leave it unregistered for entities whose id is database-generated (e.g. an auto-increment `int`) —
+`Id` is left exactly as the caller set it.
+
 #### Dependency injection setup
 
 Instead of `new`-ing everything by hand, register it once and let each repository/unit of work be

@@ -305,5 +305,120 @@ namespace DuonDevKit.EntityFrameworkCore.Tests.Repositories
             Assert.True(context.TestEntities.IgnoreQueryFilters().Single(e => e.Id == softDeletable.Id).IsDeleted);
             Assert.Null(await context.PlainEntities.FindAsync(plain.Id));
         }
+
+        [Fact]
+        public async Task Query_DefaultTracking_ChangesPersistOnSave()
+        {
+            var databaseName = Guid.NewGuid().ToString();
+            using var context = CreateContext(databaseName);
+            var entity = new TestEntity { Name = "A" };
+            context.TestEntities.Add(entity);
+            await context.SaveChangesAsync();
+            var repository = new Repository<TestEntity>(context);
+
+            var found = repository.Query().Single(e => e.Id == entity.Id);
+            found.Name = "Changed";
+            await context.SaveChangesAsync();
+
+            using var verifyContext = CreateContext(databaseName);
+            Assert.Equal("Changed", (await verifyContext.TestEntities.FindAsync(entity.Id))!.Name);
+        }
+
+        [Fact]
+        public async Task Query_AsNoTracking_ChangesDoNotPersistOnSave()
+        {
+            var databaseName = Guid.NewGuid().ToString();
+            using var context = CreateContext(databaseName);
+            var entity = new TestEntity { Name = "A" };
+            context.TestEntities.Add(entity);
+            await context.SaveChangesAsync();
+            var repository = new Repository<TestEntity>(context);
+
+            var found = repository.Query(asNoTracking: true).Single(e => e.Id == entity.Id);
+            found.Name = "Changed";
+            await context.SaveChangesAsync(); // no-op for `found` — it was never tracked
+
+            using var verifyContext = CreateContext(databaseName);
+            Assert.Equal("A", (await verifyContext.TestEntities.FindAsync(entity.Id))!.Name);
+        }
+
+        [Fact]
+        public async Task FindOneAsync_MatchingEntity_ReturnsSome()
+        {
+            using var context = CreateContext();
+            context.TestEntities.Add(new TestEntity { Name = "A" });
+            await context.SaveChangesAsync();
+            var repository = new Repository<TestEntity>(context);
+
+            var option = await repository.FindOneAsync(e => e.Name == "A");
+
+            Assert.True(option.HasValue);
+            Assert.Equal("A", option.Value.Name);
+        }
+
+        [Fact]
+        public async Task FindOneAsync_NoMatch_ReturnsNoneInsteadOfFailure()
+        {
+            using var context = CreateContext();
+            var repository = new Repository<TestEntity>(context);
+
+            var option = await repository.FindOneAsync(e => e.Name == "Missing");
+
+            Assert.False(option.HasValue);
+        }
+
+        [Fact]
+        public async Task FindOneAsync_WithInclude_EagerLoadsNavigationProperty()
+        {
+            using var context = CreateContext();
+            var post = new BlogPostEntity { Title = "Post A" };
+            post.Comments.Add(new CommentEntity { Text = "Nice!" });
+            context.BlogPosts.Add(post);
+            await context.SaveChangesAsync();
+            var repository = new Repository<BlogPostEntity>(context);
+
+            var option = await repository.FindOneAsync(
+                p => p.Id == post.Id,
+                include: q => q.Include(p => p.Comments));
+
+            Assert.True(option.HasValue);
+            Assert.Single(option.Value.Comments);
+            Assert.Equal("Nice!", option.Value.Comments[0].Text);
+        }
+
+        [Fact]
+        public async Task ListAsync_WithInclude_EagerLoadsNavigationProperty()
+        {
+            using var context = CreateContext();
+            var post = new BlogPostEntity { Title = "Post A" };
+            post.Comments.Add(new CommentEntity { Text = "Nice!" });
+            context.BlogPosts.Add(post);
+            await context.SaveChangesAsync();
+            var repository = new Repository<BlogPostEntity>(context);
+
+            var result = await repository.ListAsync(include: q => q.Include(p => p.Comments));
+
+            Assert.True(result.IsSuccess);
+            Assert.Single(result.Value[0].Comments);
+        }
+
+        [Fact]
+        public async Task ListPagedAsync_WithInclude_EagerLoadsNavigationProperty()
+        {
+            using var context = CreateContext();
+            var post = new BlogPostEntity { Title = "Post A" };
+            post.Comments.Add(new CommentEntity { Text = "Nice!" });
+            context.BlogPosts.Add(post);
+            await context.SaveChangesAsync();
+            var repository = new Repository<BlogPostEntity>(context);
+
+            var result = await repository.ListPagedAsync(
+                pageNumber: 1,
+                pageSize: 10,
+                include: q => q.Include(p => p.Comments));
+
+            Assert.True(result.IsSuccess);
+            Assert.Single(result.Value.Items[0].Comments);
+        }
     }
 }

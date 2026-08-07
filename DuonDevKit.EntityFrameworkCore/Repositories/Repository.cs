@@ -1,5 +1,6 @@
 using DuonDevKit.Core.Errors;
 using DuonDevKit.Core.Guards;
+using DuonDevKit.Core.Options;
 using DuonDevKit.Core.Results;
 using DuonDevKit.EntityFrameworkCore.Auditing;
 using Microsoft.EntityFrameworkCore;
@@ -24,11 +25,34 @@ namespace DuonDevKit.EntityFrameworkCore.Repositories
         }
 
         /// <inheritdoc />
-        public async Task<Result<IReadOnlyList<T>>> ListAsync(Expression<Func<T, bool>>? filter = null, CancellationToken ct = default)
+        public IQueryable<T> Query(bool asNoTracking = false)
+            => asNoTracking ? _context.Set<T>().AsNoTracking() : _context.Set<T>();
+
+        /// <inheritdoc />
+        public async Task<Option<T>> FindOneAsync(
+            Expression<Func<T, bool>> predicate,
+            Func<IQueryable<T>, IQueryable<T>>? include = null,
+            CancellationToken ct = default)
+        {
+            IQueryable<T> query = _context.Set<T>().Where(predicate);
+            if (include is not null)
+                query = include(query);
+
+            var entity = await query.FirstOrDefaultAsync(ct);
+            return entity is null ? Option<T>.None : Option<T>.Some(entity);
+        }
+
+        /// <inheritdoc />
+        public async Task<Result<IReadOnlyList<T>>> ListAsync(
+            Expression<Func<T, bool>>? filter = null,
+            Func<IQueryable<T>, IQueryable<T>>? include = null,
+            CancellationToken ct = default)
         {
             IQueryable<T> query = _context.Set<T>();
             if (filter is not null)
                 query = query.Where(filter);
+            if (include is not null)
+                query = include(query);
 
             var entities = await query.ToListAsync(ct);
             return Result.Success<IReadOnlyList<T>>(entities);
@@ -40,6 +64,7 @@ namespace DuonDevKit.EntityFrameworkCore.Repositories
             int pageSize,
             Expression<Func<T, bool>>? filter = null,
             Func<IQueryable<T>, IOrderedQueryable<T>>? orderBy = null,
+            Func<IQueryable<T>, IQueryable<T>>? include = null,
             CancellationToken ct = default)
         {
             var validation = Result.Combine(
@@ -57,6 +82,8 @@ namespace DuonDevKit.EntityFrameworkCore.Repositories
 
             if (orderBy is not null)
                 query = orderBy(query);
+            if (include is not null)
+                query = include(query);
 
             var items = await query.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToListAsync(ct);
 
@@ -64,14 +91,14 @@ namespace DuonDevKit.EntityFrameworkCore.Repositories
         }
 
         /// <inheritdoc />
-        public async Task<Result<T>> AddAsync(T entity, CancellationToken ct = default)
+        public virtual async Task<Result<T>> AddAsync(T entity, CancellationToken ct = default)
         {
             await _context.Set<T>().AddAsync(entity, ct);
             return Result.Success(entity);
         }
 
         /// <inheritdoc />
-        public async Task<Result<IReadOnlyList<T>>> AddRangeAsync(IEnumerable<T> entities, CancellationToken ct = default)
+        public virtual async Task<Result<IReadOnlyList<T>>> AddRangeAsync(IEnumerable<T> entities, CancellationToken ct = default)
         {
             var list = entities as IReadOnlyList<T> ?? entities.ToList();
             await _context.Set<T>().AddRangeAsync(list, ct);
