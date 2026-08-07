@@ -12,6 +12,20 @@ namespace DuonDevKit.EntityFrameworkCore.Repositories
         /// <summary>Lists entities matching <paramref name="filter"/>, or all entities when <paramref name="filter"/> is <c>null</c>.</summary>
         Task<Result<IReadOnlyList<T>>> ListAsync(Expression<Func<T, bool>>? filter = null, CancellationToken ct = default);
 
+        /// <summary>
+        /// Lists a single page of entities matching <paramref name="filter"/> (1-based
+        /// <paramref name="pageNumber"/>), alongside the total count across every page. Fails with
+        /// <c>Error.Validation</c> if <paramref name="pageNumber"/> or <paramref name="pageSize"/> is not
+        /// positive. Pass <paramref name="orderBy"/> (e.g. <c>q =&gt; q.OrderBy(x =&gt; x.CreatedAt)</c>) for a
+        /// stable page order — without it, page contents are not guaranteed to be consistent across calls.
+        /// </summary>
+        Task<Result<PagedResult<T>>> ListPagedAsync(
+            int pageNumber,
+            int pageSize,
+            Expression<Func<T, bool>>? filter = null,
+            Func<IQueryable<T>, IOrderedQueryable<T>>? orderBy = null,
+            CancellationToken ct = default);
+
         /// <summary>Begins tracking <paramref name="entity"/> as a new row. Not yet persisted until <c>IUnitOfWork.SaveChangesAsync</c> is called.</summary>
         Task<Result<T>> AddAsync(T entity, CancellationToken ct = default);
 
