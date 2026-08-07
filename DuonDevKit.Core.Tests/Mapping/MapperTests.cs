@@ -146,6 +146,19 @@ namespace DuonDevKit.Core.Tests.Mapping
         }
 
         [Fact]
+        public void AddDuonDevKitMappers_CalledTwiceWithSameTypePair_ThrowsOnSecondCallToo()
+        {
+            var services = new ServiceCollection();
+            services.AddDuonDevKitMappers([typeof(DuplicateOrderMapperA)]);
+
+            var exception = Assert.Throws<InvalidOperationException>(
+                () => services.AddDuonDevKitMappers([typeof(DuplicateOrderMapperB)]));
+
+            Assert.Contains(nameof(DuplicateOrderMapperA), exception.Message);
+            Assert.Contains(nameof(DuplicateOrderMapperB), exception.Message);
+        }
+
+        [Fact]
         public void AddDuonDevKitMappers_ScansGivenAssembly_RegistersDiscoveredMappersExceptDeliberateDuplicates()
         {
             // Whole-assembly scanning is exercised here against a real assembly; DuplicateOrderMapperA/B

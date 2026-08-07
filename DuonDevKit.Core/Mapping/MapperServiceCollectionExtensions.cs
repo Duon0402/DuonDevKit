@@ -1,5 +1,6 @@
 using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace DuonDevKit.Core.Mapping
 {
@@ -28,11 +29,9 @@ namespace DuonDevKit.Core.Mapping
         /// resolving them. Use this overload directly (instead of scanning whole assemblies) to register from
         /// an explicit, pre-filtered type list.
         /// </summary>
-        /// <exception cref="InvalidOperationException">Two types in <paramref name="candidateTypes"/> implement the same closed <see cref="IMapper{TSource, TDestination}"/>/<see cref="IUpdateMapper{TSource, TDestination}"/> — which one would apply is otherwise undefined, since type scan order isn't guaranteed.</exception>
+        /// <exception cref="InvalidOperationException">Two types implement the same closed <see cref="IMapper{TSource, TDestination}"/>/<see cref="IUpdateMapper{TSource, TDestination}"/> — whether both come from <paramref name="candidateTypes"/> or one was already registered by an earlier call — since which one would apply is otherwise undefined (type scan order isn't guaranteed).</exception>
         public static IServiceCollection AddDuonDevKitMappers(this IServiceCollection services, IEnumerable<Type> candidateTypes)
         {
-            var registeredBy = new Dictionary<Type, Type>();
-
             foreach (var type in candidateTypes)
             {
                 if (type.IsAbstract || type.IsInterface)
@@ -47,19 +46,19 @@ namespace DuonDevKit.Core.Mapping
                     if (definition != typeof(IMapper<,>) && definition != typeof(IUpdateMapper<,>))
                         continue;
 
-                    if (registeredBy.TryGetValue(implementedInterface, out var existing))
+                    var existing = services.FirstOrDefault(d => d.ServiceType == implementedInterface);
+                    if (existing is not null)
                     {
                         throw new InvalidOperationException(
-                            $"Both '{existing.FullName}' and '{type.FullName}' implement '{implementedInterface}'. " +
+                            $"Both '{existing.ImplementationType?.FullName}' and '{type.FullName}' implement '{implementedInterface}'. " +
                             "Only one mapper may be registered per type pair.");
                     }
 
-                    registeredBy[implementedInterface] = type;
                     services.AddScoped(implementedInterface, type);
                 }
             }
 
-            services.AddScoped<IObjectMapper, ObjectMapper>();
+            services.TryAddScoped<IObjectMapper, ObjectMapper>();
 
             return services;
         }
