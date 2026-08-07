@@ -5,11 +5,15 @@ extension methods, built for .NET 8.
 
 ## Projects
 
-- **DuonDevKit.Core** — core library: `Result`/`Result<T>`, `Error`, and extension methods.
+- **DuonDevKit.Core** — core library: `Result`/`Result<T>`, `Error`, `Option<T>`, `Guard`, and
+  extension methods.
 - **DuonDevKit.Core.Tests** — xUnit test suite for `DuonDevKit.Core`.
 - **DuonDevKit.EntityFrameworkCore** — Result-based Repository/UnitOfWork pattern for EF Core, plus
-  automatic audit-field population (created/updated/soft-deleted by + at).
+  automatic audit-field population (created/updated/soft-deleted by + at) and DI registration helpers.
 - **DuonDevKit.EntityFrameworkCore.Tests** — xUnit test suite using EF Core's InMemory provider.
+- **DuonDevKit.AspNetCore** — maps `Result`/`Result<T>` to `IActionResult` (MVC) and `IResult`
+  (Minimal APIs), so a controller/endpoint never has to switch on `Error.Type` itself.
+- **DuonDevKit.AspNetCore.Tests** — xUnit test suite for `DuonDevKit.AspNetCore`.
 
 ## Features
 
@@ -204,6 +208,24 @@ Entities inheriting `BaseEntity<TId>` (or the non-generic `BaseEntity` for `stri
 `GetByIdAsync(TId id)` via `Repository<T, TId>`, alongside the untyped `object[] keyValues` overload
 on `Repository<T>`.
 
+#### Dependency injection setup
+
+Instead of `new`-ing everything by hand, register it once and let each repository/unit of work be
+resolved per request:
+
+```csharp
+using DuonDevKit.EntityFrameworkCore.DependencyInjection;
+
+services.AddDbContext<AppDbContext>((sp, options) =>
+    options.UseSqlServer(connectionString).AddDuonDevKitAuditing(sp)); // wires AuditSaveChangesInterceptor
+
+services.AddDuonDevKitEntityFrameworkCore<AppDbContext>(); // IUnitOfWork, IRepository<T>, IRepository<T, TId>
+```
+
+If the app registers its own `ICurrentUserProvider` (e.g. wrapping `IHttpContextAccessor`), it's
+picked up automatically; otherwise a `NullCurrentUserProvider` (`UserId` always `null`) is used so
+setup still works without one.
+
 #### Bulk operations
 
 `Repository<T>` also has range versions of `AddAsync`/`Remove`, plus `Update`/`UpdateRange` for
@@ -221,6 +243,27 @@ repository.RemoveRange([order1, order2]);   // same, batched; attaches any detac
 
 await unitOfWork.SaveChangesAsync();
 ```
+
+#### Pagination
+
+`ListPagedAsync` returns a single page plus the total count, instead of loading every matching row:
+
+```csharp
+Result<PagedResult<Order>> page = await repository.ListPagedAsync(
+    pageNumber: 1,
+    pageSize: 20,
+    filter: o => o.Status == "Pending",
+    orderBy: q => q.OrderByDescending(o => o.CreatedAt)); // pass an orderBy for a stable page order
+
+if (page.IsSuccess)
+{
+    IReadOnlyList<Order> items = page.Value.Items;
+    int totalPages = page.Value.TotalPages;
+    bool hasNext = page.Value.HasNextPage;
+}
+```
+
+Fails with `Error.Validation` if `pageNumber`/`pageSize` isn't positive.
 
 #### Transactions
 
@@ -277,6 +320,35 @@ soft-deletes (`IsDeleted = true`) instead of hard-deleting when `entity` impleme
 
 Call `modelBuilder.ApplySoftDeleteQueryFilter()` once in your `DbContext.OnModelCreating` to exclude
 soft-deleted rows from queries by default (`.IgnoreQueryFilters()` includes them when needed).
+
+### AspNetCore (Result → HTTP response)
+
+`ToActionResult`/`ToApiResult` map a `Result`/`Result<T>` straight to a response — a controller or
+Minimal API endpoint never has to switch on `Error.Type` itself. A failure becomes a
+`ProblemDetails` body, using `Error.ToHttpStatusCode()` for the status code and exposing
+`Error.Code` as an `errorCode` extension:
+
+```csharp
+using DuonDevKit.AspNetCore;
+
+// MVC controller
+[HttpGet("{id}")]
+public async Task<IActionResult> GetById(string id)
+{
+    Result<Order> result = await repository.GetByIdAsync([id]);
+    return result.ToActionResult(); // 200 + Order, or a ProblemDetails with the right status code
+}
+
+// Minimal API
+app.MapGet("/orders/{id}", async (string id, IRepository<Order> repository) =>
+{
+    Result<Order> result = await repository.GetByIdAsync([id]);
+    return result.ToApiResult();
+});
+```
+
+A successful `Result` (no value) maps to `204 No Content`; a successful `Result<T>` maps to
+`200 OK` with `Value` as the body.
 
 ## Getting started
 

@@ -79,6 +79,66 @@ namespace DuonDevKit.EntityFrameworkCore.Tests.Repositories
         }
 
         [Fact]
+        public async Task ListPagedAsync_SecondPage_ReturnsCorrectSliceAndTotalCount()
+        {
+            using var context = CreateContext();
+            context.TestEntities.AddRange(
+                new TestEntity { Name = "A" },
+                new TestEntity { Name = "B" },
+                new TestEntity { Name = "C" },
+                new TestEntity { Name = "D" },
+                new TestEntity { Name = "E" });
+            await context.SaveChangesAsync();
+            var repository = new Repository<TestEntity>(context);
+
+            var result = await repository.ListPagedAsync(pageNumber: 2, pageSize: 2, orderBy: q => q.OrderBy(e => e.Name));
+
+            Assert.True(result.IsSuccess);
+            Assert.Equal(2, result.Value.Items.Count);
+            Assert.Equal(["C", "D"], result.Value.Items.Select(e => e.Name));
+            Assert.Equal(5, result.Value.TotalCount);
+            Assert.Equal(3, result.Value.TotalPages);
+            Assert.True(result.Value.HasPreviousPage);
+            Assert.True(result.Value.HasNextPage);
+        }
+
+        [Fact]
+        public async Task ListPagedAsync_WithFilter_PagesOverMatchingOnly()
+        {
+            using var context = CreateContext();
+            context.TestEntities.AddRange(
+                new TestEntity { Name = "Match A" },
+                new TestEntity { Name = "Other" },
+                new TestEntity { Name = "Match B" });
+            await context.SaveChangesAsync();
+            var repository = new Repository<TestEntity>(context);
+
+            var result = await repository.ListPagedAsync(
+                pageNumber: 1,
+                pageSize: 10,
+                filter: e => e.Name.StartsWith("Match"),
+                orderBy: q => q.OrderBy(e => e.Name));
+
+            Assert.True(result.IsSuccess);
+            Assert.Equal(2, result.Value.TotalCount);
+            Assert.Equal(2, result.Value.Items.Count);
+        }
+
+        [Theory]
+        [InlineData(0, 10)]
+        [InlineData(1, 0)]
+        [InlineData(-1, 10)]
+        public async Task ListPagedAsync_InvalidPageNumberOrSize_ReturnsFailure(int pageNumber, int pageSize)
+        {
+            using var context = CreateContext();
+            var repository = new Repository<TestEntity>(context);
+
+            var result = await repository.ListPagedAsync(pageNumber, pageSize);
+
+            Assert.True(result.IsFailure);
+        }
+
+        [Fact]
         public async Task AddAsync_ValidEntity_ReturnsSuccessAndPersists()
         {
             using var context = CreateContext();

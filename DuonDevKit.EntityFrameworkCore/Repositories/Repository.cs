@@ -1,4 +1,5 @@
 using DuonDevKit.Core.Errors;
+using DuonDevKit.Core.Guards;
 using DuonDevKit.Core.Results;
 using DuonDevKit.EntityFrameworkCore.Auditing;
 using Microsoft.EntityFrameworkCore;
@@ -31,6 +32,35 @@ namespace DuonDevKit.EntityFrameworkCore.Repositories
 
             var entities = await query.ToListAsync(ct);
             return Result.Success<IReadOnlyList<T>>(entities);
+        }
+
+        /// <inheritdoc />
+        public async Task<Result<PagedResult<T>>> ListPagedAsync(
+            int pageNumber,
+            int pageSize,
+            Expression<Func<T, bool>>? filter = null,
+            Func<IQueryable<T>, IOrderedQueryable<T>>? orderBy = null,
+            CancellationToken ct = default)
+        {
+            var validation = Result.Combine(
+                Guard.Against.NegativeOrZero(pageNumber, nameof(pageNumber)),
+                Guard.Against.NegativeOrZero(pageSize, nameof(pageSize)));
+
+            if (validation.IsFailure)
+                return Result.Fail<PagedResult<T>>(validation.Error);
+
+            IQueryable<T> query = _context.Set<T>();
+            if (filter is not null)
+                query = query.Where(filter);
+
+            var totalCount = await query.CountAsync(ct);
+
+            if (orderBy is not null)
+                query = orderBy(query);
+
+            var items = await query.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToListAsync(ct);
+
+            return Result.Success(new PagedResult<T>(items, pageNumber, pageSize, totalCount));
         }
 
         /// <inheritdoc />

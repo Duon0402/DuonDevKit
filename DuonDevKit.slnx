@@ -2,9 +2,11 @@
   <Folder Name="/src/">
     <Project Path="DuonDevKit.Core/DuonDevKit.Core.csproj" />
     <Project Path="DuonDevKit.EntityFrameworkCore/DuonDevKit.EntityFrameworkCore.csproj" />
+    <Project Path="DuonDevKit.AspNetCore/DuonDevKit.AspNetCore.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="DuonDevKit.Core.Tests/DuonDevKit.Core.Tests.csproj" />
     <Project Path="DuonDevKit.EntityFrameworkCore.Tests/DuonDevKit.EntityFrameworkCore.Tests.csproj" />
+    <Project Path="DuonDevKit.AspNetCore.Tests/DuonDevKit.AspNetCore.Tests.csproj" />
   </Folder>
 </Solution>
