@@ -69,6 +69,14 @@ Error.Forbidden(code, message)
 Error.Unexpected(code, message)
 ```
 
+`Error.ToHttpStatusCode()` maps an error to its corresponding `System.Net.HttpStatusCode`
+(e.g. `Validation` → `BadRequest`, `NotFound` → `NotFound`, `Unexpected` → `InternalServerError`),
+useful when converting a `Result` into an HTTP response:
+
+```csharp
+HttpStatusCode status = error.ToHttpStatusCode();
+```
+
 ### Extensions
 
 `StringExtensions` adds common string checks:
