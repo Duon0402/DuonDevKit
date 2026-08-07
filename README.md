@@ -71,6 +71,74 @@ Result<decimal> total = await GetOrderAsync(orderId)         // Task<Result<Orde
 Both `MapAsync` and `BindAsync` short-circuit on failure — if any step in the chain fails, the
 remaining steps are skipped and the original error propagates.
 
+#### Ensure
+
+`Ensure` turns a successful result into a failure when a predicate doesn't hold, without needing
+an `if`/`return` for it:
+
+```csharp
+Result<int> quantity = Parse(input)
+    .Ensure(value => value > 0, Error.Validation("VAL003", "Quantity must be positive."));
+```
+
+`EnsureAsync` (in `ResultAsyncExtensions`) does the same across an async chain, on both a sync and
+an async predicate:
+
+```csharp
+Result<Order> order = await GetOrderAsync(orderId)
+    .EnsureAsync(o => o.Status == "Pending", Error.Business("ORD001", "Order is not pending."))
+    .EnsureAsync(o => IsWithinCancellationWindowAsync(o), Error.Business("ORD002", "Cancellation window has passed."));
+```
+
+Both skip the predicate (and propagate the error unchanged) on an already-failed result.
+
+#### Combine
+
+`Result.Combine` returns the first failure among several results, or success if all of them
+succeeded — useful for running independent validations and reporting the first one that failed:
+
+```csharp
+Result validation = Result.Combine(
+    Guard.Against.NullOrEmpty(name, nameof(name)),
+    Guard.Against.NegativeOrZero(quantity, nameof(quantity)));
+```
+
+### Guard clauses
+
+`Guard.Against` returns a failed `Result` (instead of throwing) when the checked condition doesn't
+hold:
+
+```csharp
+using DuonDevKit.Core.Guards;
+
+Result Validate(string? name, int quantity)
+    => Result.Combine(
+        Guard.Against.Null(name, nameof(name)),
+        Guard.Against.NullOrEmpty(name, nameof(name)),
+        Guard.Against.NegativeOrZero(quantity, nameof(quantity)),
+        Guard.Against.Negative(quantity, nameof(quantity)));
+```
+
+### Option\<T\>
+
+`Option<T>` represents the presence or absence of a value with no reason attached — use it instead
+of `Result<T>` when "not found" doesn't need an explanation:
+
+```csharp
+using DuonDevKit.Core.Options;
+
+Option<User> FindUser(string id) =>
+    _users.TryGetValue(id, out var user) ? user : Option<User>.None; // implicit operator from T
+
+string greeting = FindUser(id).Match(
+    onSome: user => $"Hello, {user.Name}!",
+    onNone: () => "User not found.");
+
+Option<string> email = FindUser(id).Map(u => u.Email);
+
+Result<User> result = FindUser(id).ToResult(Error.NotFound("USER001", "User not found."));
+```
+
 ### Error
 
 `Error` is a record with static factory helpers for each `ErrorType`:
