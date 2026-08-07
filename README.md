@@ -5,8 +5,8 @@ extension methods, built for .NET 8.
 
 ## Projects
 
-- **DuonDevKit.Core** — core library: `Result`/`Result<T>`, `Error`, `Option<T>`, `Guard`, and
-  extension methods.
+- **DuonDevKit.Core** — core library: `Result`/`Result<T>`, `Error`, `Option<T>`, `Guard`,
+  AutoMapper-free object mapping, and extension methods.
 - **DuonDevKit.Core.Tests** — xUnit test suite for `DuonDevKit.Core`.
 - **DuonDevKit.EntityFrameworkCore** — Result-based Repository/UnitOfWork pattern for EF Core, plus
   automatic audit-field population (created/updated/soft-deleted by + at) and DI registration helpers.
@@ -142,6 +142,52 @@ Option<string> email = FindUser(id).Map(u => u.Email);
 
 Result<User> result = FindUser(id).ToResult(Error.NotFound("USER001", "User not found."));
 ```
+
+### Mapping
+
+Object-to-object mapping via plain, hand-written classes — no reflection/convention magic like
+AutoMapper's, so renamed fields, combined fields, and computed values just work with no extra
+configuration:
+
+```csharp
+using DuonDevKit.Core.Mapping;
+
+public class OrderToOrderDtoMapper : IMapper<Order, OrderDto>
+{
+    public OrderDto Map(Order source) => new()
+    {
+        Name = source.Name,
+        Total = source.Total,
+    };
+}
+
+public class UpdateOrderRequestToOrderMapper : IUpdateMapper<UpdateOrderRequest, Order>
+{
+    public void Map(UpdateOrderRequest source, Order destination) => destination.Name = source.Name;
+}
+```
+
+Register every mapper in an assembly in one call (fails fast at startup if two classes implement the
+same type pair, instead of silently picking whichever one happened to be scanned last):
+
+```csharp
+services.AddDuonDevKitMappers(typeof(Program).Assembly);
+```
+
+Inject `IMapper<Order, OrderDto>`/`IUpdateMapper<UpdateOrderRequest, Order>` directly when the type
+pair is known at compile time — cheapest, and the most explicit about what a class depends on. When
+the type pair varies at the call site (e.g. a generic CRUD service), inject `IObjectMapper` instead:
+
+```csharp
+public class OrderService(IObjectMapper mapper)
+{
+    public OrderDto ToDto(Order order) => mapper.Map<Order, OrderDto>(order);
+    // or, with extension-method sugar: order.MapTo<Order, OrderDto>(mapper);
+}
+```
+
+`IObjectMapper` caches the resolved mapper per type pair, so only the first call for a given pair
+pays the DI lookup.
 
 ### Error
 

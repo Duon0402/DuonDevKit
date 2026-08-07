@@ -8,9 +8,9 @@
 
   <PropertyGroup>
     <PackageId>DuonDevKit.Core</PackageId>
-    <Version>0.3.0</Version>
-    <Description>Railway-oriented Result/Error pattern for .NET — Result, Result&lt;T&gt;, Error, Option&lt;T&gt;, Guard clauses, and async chaining extensions.</Description>
-    <PackageTags>result;railway-oriented-programming;error-handling;option;guard-clauses;dotnet</PackageTags>
+    <Version>0.4.0</Version>
+    <Description>Railway-oriented Result/Error pattern for .NET — Result, Result&lt;T&gt;, Error, Option&lt;T&gt;, Guard clauses, AutoMapper-free object mapping, and async chaining extensions.</Description>
+    <PackageTags>result;railway-oriented-programming;error-handling;option;guard-clauses;mapping;dotnet</PackageTags>
     <IsPackable>true</IsPackable>
   </PropertyGroup>
 
@@ -20,6 +20,10 @@
 
   <ItemGroup>
     <None Include="..\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.2" />
   </ItemGroup>
 
 </Project>
