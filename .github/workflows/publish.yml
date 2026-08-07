@@ -1,0 +1,52 @@
+name: Publish
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Restore
+        run: dotnet restore DuonDevKit.slnx
+
+      - name: Build
+        run: dotnet build DuonDevKit.slnx --no-restore --configuration Release
+
+      - name: Test
+        run: dotnet test DuonDevKit.slnx --no-build --configuration Release
+
+      - name: Pack DuonDevKit.Core
+        run: dotnet pack DuonDevKit.Core/DuonDevKit.Core.csproj --no-build --configuration Release --output ./nupkgs
+
+      - name: Pack DuonDevKit.EntityFrameworkCore
+        run: dotnet pack DuonDevKit.EntityFrameworkCore/DuonDevKit.EntityFrameworkCore.csproj --no-build --configuration Release --output ./nupkgs
+
+      # NuGet.org Trusted Publishing: exchanges this job's short-lived OIDC token for a temporary
+      # NuGet API key — no static API key stored in repo Secrets.
+      # NOTE: verify the action name/version below against NuGet.org's current Trusted Publishing
+      # docs before the first real run — this is a newer NuGet.org feature and the action may have
+      # moved/renamed since this workflow was written. Requires a Trusted Publishing policy
+      # configured on nuget.org linking this repo + this workflow file (see docs/PUBLISHING.md).
+      - name: NuGet login (Trusted Publishing)
+        id: nuget-login
+        uses: NuGet/login@v1
+        with:
+          user: Duon0402
+
+      - name: Push packages to NuGet.org
+        run: dotnet nuget push "./nupkgs/*.nupkg" --api-key "${{ steps.nuget-login.outputs.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json --skip-duplicate

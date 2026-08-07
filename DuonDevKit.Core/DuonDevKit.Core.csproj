@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
@@ -6,8 +6,20 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <PackageId>DuonDevKit.Core</PackageId>
+    <Version>0.1.0</Version>
+    <Description>Railway-oriented Result/Error pattern for .NET — Result, Result&lt;T&gt;, Error, Option&lt;T&gt;, Guard clauses, and async chaining extensions.</Description>
+    <PackageTags>result;railway-oriented-programming;error-handling;option;guard-clauses;dotnet</PackageTags>
+    <IsPackable>true</IsPackable>
+  </PropertyGroup>
+
   <ItemGroup>
     <Folder Include="Errors\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
 </Project>

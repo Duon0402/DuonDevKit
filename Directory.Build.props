@@ -1,0 +1,16 @@
+<Project>
+
+  <PropertyGroup>
+    <Authors>Duon0402</Authors>
+    <Company>Duon0402</Company>
+    <RepositoryUrl>https://github.com/Duon0402/DuonDevKit</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/Duon0402/DuonDevKit</PackageProjectUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
+  </PropertyGroup>
+
+</Project>
