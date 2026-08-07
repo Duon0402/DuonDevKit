@@ -136,6 +136,48 @@ Entities inheriting `BaseEntity<TId>` (or the non-generic `BaseEntity` for `stri
 `GetByIdAsync(TId id)` via `Repository<T, TId>`, alongside the untyped `object[] keyValues` overload
 on `Repository<T>`.
 
+#### Bulk operations
+
+`Repository<T>` also has range versions of `AddAsync`/`Remove`, plus `Update`/`UpdateRange` for
+disconnected entities (e.g. a full entity deserialized from a client request) that don't need a
+fetch-then-mutate round trip:
+
+```csharp
+await repository.AddRangeAsync([order1, order2]);
+
+repository.Update(detachedOrder);           // attaches + marks every property modified
+repository.UpdateRange([order1, order2]);
+
+repository.Remove(order);                   // soft- or hard-deletes depending on ISoftDelete
+repository.RemoveRange([order1, order2]);   // same, batched; attaches any detached entity first
+
+await unitOfWork.SaveChangesAsync();
+```
+
+#### Transactions
+
+`UnitOfWork` also manages transactions. Prefer `ExecuteInTransactionAsync` — it wraps the operation
+and the save in a single transaction via the provider's execution strategy, so retrying providers
+(e.g. `EnableRetryOnFailure`) retry the whole unit safely, and it commits only if both succeed:
+
+```csharp
+Result<Order> result = await unitOfWork.ExecuteInTransactionAsync(async ct =>
+{
+    var added = await repository.AddAsync(new Order { /* ... */ }, ct);
+    return added;
+});
+```
+
+For finer-grained manual control (bypasses execution-strategy retries):
+
+```csharp
+await unitOfWork.BeginTransactionAsync();
+// ... repository calls, unitOfWork.SaveChangesAsync() ...
+await unitOfWork.CommitTransactionAsync();   // or RollbackTransactionAsync()
+```
+
+`unitOfWork.HasChanges()` reports whether the underlying context is tracking any pending work.
+
 #### Audit fields
 
 Opt an entity into automatic audit tracking by implementing one or more marker interfaces:
