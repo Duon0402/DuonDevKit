@@ -28,6 +28,9 @@ dotnet add package DuonDevKit.Jwt
 
 Each package README includes its required registration and first-use example.
 
+For an end-to-end Minimal API using all five packages, see
+[samples/DuonDevKit.SampleApi](samples/DuonDevKit.SampleApi/README.md).
+
 ```bash
 dotnet build DuonDevKit.slnx
 dotnet test DuonDevKit.slnx

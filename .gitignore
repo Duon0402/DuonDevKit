@@ -364,3 +364,7 @@ FodyWeavers.xsd
 
 # Local dotnet pack output
 nupkgs/
+
+# Local database created by the sample API
+samples/DuonDevKit.SampleApi/*.db
+samples/DuonDevKit.SampleApi/.keys/

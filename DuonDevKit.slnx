@@ -6,6 +6,9 @@
     <Project Path="DuonDevKit.Dapper/DuonDevKit.Dapper.csproj" />
     <Project Path="DuonDevKit.Jwt/DuonDevKit.Jwt.csproj" />
   </Folder>
+  <Folder Name="/samples/">
+    <Project Path="samples/DuonDevKit.SampleApi/DuonDevKit.SampleApi.csproj" />
+  </Folder>
   <Folder Name="/tests/">
     <Project Path="DuonDevKit.Core.Tests/DuonDevKit.Core.Tests.csproj" />
     <Project Path="DuonDevKit.EntityFrameworkCore.Tests/DuonDevKit.EntityFrameworkCore.Tests.csproj" />

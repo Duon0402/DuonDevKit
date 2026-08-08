@@ -15,7 +15,7 @@ authenticated with **Trusted Publishing (OIDC)**. No static API key is stored in
    pointing at:
    - Repository owner: `Duon0402`
    - Repository name: `DuonDevKit`
-   - Workflow file: `.github/workflows/publish.yml`
+   - Workflow file: `publish.yml` (NuGet requires the file name only, not its path)
    - Environment: (leave empty unless a GitHub Environment is added later)
 4. Verify the `NuGet/login@v1` step in `.github/workflows/publish.yml` still matches the action
    name/version documented by NuGet.org at setup time — this feature is newer and the action may
