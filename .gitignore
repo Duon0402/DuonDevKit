@@ -367,4 +367,6 @@ nupkgs/
 
 # Local database created by the sample API
 samples/DuonDevKit.SampleApi/*.db
+samples/DuonDevKit.SampleApi/*.db-shm
+samples/DuonDevKit.SampleApi/*.db-wal
 samples/DuonDevKit.SampleApi/.keys/
