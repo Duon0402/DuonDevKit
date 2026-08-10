@@ -23,8 +23,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.2" Condition="'$(TargetFramework)' == 'net8.0'" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.13" Condition="'$(TargetFramework)' == 'net9.0'" />
+    <!-- Unconditional: the 9.x package ships a single net8.0 asset used by both our net8.0 and
+         net9.0 builds (Microsoft.Extensions.DependencyInjection.Abstractions has native net8.0/net9.0
+         assets too, but there's no need to split — one version keeps Dependabot bumps to one line
+         instead of two independently-drifting pins). -->
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.18" />
   </ItemGroup>
 
 </Project>

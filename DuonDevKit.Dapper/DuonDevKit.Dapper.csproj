@@ -16,12 +16,11 @@
 
   <ItemGroup>
     <PackageReference Include="Dapper" Version="2.1.35" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.11" Condition="'$(TargetFramework)' == 'net8.0'" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="8.0.11" Condition="'$(TargetFramework)' == 'net8.0'" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.2" Condition="'$(TargetFramework)' == 'net8.0'" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.13" Condition="'$(TargetFramework)' == 'net9.0'" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="9.0.13" Condition="'$(TargetFramework)' == 'net9.0'" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.13" Condition="'$(TargetFramework)' == 'net9.0'" />
+    <!-- Unconditional: see DuonDevKit.EntityFrameworkCore.csproj for why the EF Core family doesn't
+         need a per-TFM version split. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.18" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="9.0.18" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.18" />
   </ItemGroup>
 
   <ItemGroup>
