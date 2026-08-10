@@ -5,6 +5,7 @@
     <Project Path="DuonDevKit.AspNetCore/DuonDevKit.AspNetCore.csproj" />
     <Project Path="DuonDevKit.Dapper/DuonDevKit.Dapper.csproj" />
     <Project Path="DuonDevKit.Jwt/DuonDevKit.Jwt.csproj" />
+    <Project Path="DuonDevKit.Validation/DuonDevKit.Validation.csproj" />
   </Folder>
   <Folder Name="/samples/">
     <Project Path="samples/DuonDevKit.SampleApi/DuonDevKit.SampleApi.csproj" />
@@ -15,5 +16,6 @@
     <Project Path="DuonDevKit.AspNetCore.Tests/DuonDevKit.AspNetCore.Tests.csproj" />
     <Project Path="DuonDevKit.Dapper.Tests/DuonDevKit.Dapper.Tests.csproj" />
     <Project Path="DuonDevKit.Jwt.Tests/DuonDevKit.Jwt.Tests.csproj" />
+    <Project Path="DuonDevKit.Validation.Tests/DuonDevKit.Validation.Tests.csproj" />
   </Folder>
 </Solution>

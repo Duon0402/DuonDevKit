@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net8.0;net9.0</TargetFrameworks>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <PackageId>DuonDevKit.Validation</PackageId>
+    <Version>0.1.0</Version>
+    <Description>FluentValidation integration for DuonDevKit.Core's Result pattern — runs an IValidator&lt;T&gt; and returns a Result instead of a raw ValidationResult, plus assembly-scanning DI registration.</Description>
+    <PackageTags>validation;fluentvalidation;result;railway-oriented-programming;dotnet</PackageTags>
+    <IsPackable>true</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FluentValidation" Version="12.1.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DuonDevKit.Core\DuonDevKit.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+</Project>

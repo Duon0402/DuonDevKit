@@ -1,16 +1,17 @@
 # DuonDevKit
 
-DuonDevKit is a collection of lightweight .NET libraries (targeting `net8.0` and `net9.0`) for explicit error handling, data access, ASP.NET Core responses, and JWT authentication.
+DuonDevKit is a collection of lightweight .NET libraries (targeting `net8.0` and `net9.0`) for explicit error handling, data access, ASP.NET Core responses, JWT authentication, and validation.
 
 ## Packages
 
 | Package | Description | Documentation |
 | --- | --- | --- |
-| `DuonDevKit.Core` | Result/Error, Option, guards, mapping, security, and extensions. | [README](DuonDevKit.Core/README.md) |
+| `DuonDevKit.Core` | Result/Error, Option, guards, mapping, security, DataAnnotations validation, and extensions. | [README](DuonDevKit.Core/README.md) |
 | `DuonDevKit.EntityFrameworkCore` | Result-based Repository/UnitOfWork with auditing and soft deletion. | [README](DuonDevKit.EntityFrameworkCore/README.md) |
-| `DuonDevKit.AspNetCore` | Converts Results into MVC and Minimal API responses. | [README](DuonDevKit.AspNetCore/README.md) |
+| `DuonDevKit.AspNetCore` | Converts Results into MVC and Minimal API responses; automatic request validation. | [README](DuonDevKit.AspNetCore/README.md) |
 | `DuonDevKit.Dapper` | Executes Dapper SQL through an EF Core context connection and transaction. | [README](DuonDevKit.Dapper/README.md) |
 | `DuonDevKit.Jwt` | JWT access/refresh token support and audit-user integration. | [README](DuonDevKit.Jwt/README.md) |
+| `DuonDevKit.Validation` | FluentValidation integration for the Result pattern. | [README](DuonDevKit.Validation/README.md) |
 
 ## Getting started
 
@@ -24,6 +25,7 @@ dotnet add package DuonDevKit.EntityFrameworkCore
 dotnet add package DuonDevKit.AspNetCore
 dotnet add package DuonDevKit.Dapper
 dotnet add package DuonDevKit.Jwt
+dotnet add package DuonDevKit.Validation
 ```
 
 Each package README includes its required registration and first-use example.

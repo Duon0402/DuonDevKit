@@ -1,18 +1,19 @@
 # Publishing DuonDevKit to NuGet.org
 
-This repo publishes five packages — `DuonDevKit.Core`, `DuonDevKit.EntityFrameworkCore`,
-`DuonDevKit.AspNetCore`, `DuonDevKit.Dapper`, and `DuonDevKit.Jwt` — to NuGet.org via GitHub Actions,
-authenticated with **Trusted Publishing (OIDC)**. No static API key is stored in GitHub Secrets.
+This repo publishes six packages — `DuonDevKit.Core`, `DuonDevKit.EntityFrameworkCore`,
+`DuonDevKit.AspNetCore`, `DuonDevKit.Dapper`, `DuonDevKit.Jwt`, and `DuonDevKit.Validation` — to
+NuGet.org via GitHub Actions, authenticated with **Trusted Publishing (OIDC)**. No static API key is
+stored in GitHub Secrets.
 
 ## One-time setup: Trusted Publishing policy on NuGet.org
 
-1. Sign in to [nuget.org](https://www.nuget.org) with an account that owns (or will own) all five
+1. Sign in to [nuget.org](https://www.nuget.org) with an account that owns (or will own) all six
    package IDs.
 2. Go to **Account settings → Trusted Publishing** (or the equivalent section under your profile —
    this is a newer NuGet.org feature, so double-check the exact menu path in the current UI).
 3. Create a Trusted Publishing policy for each package (`DuonDevKit.Core`,
-   `DuonDevKit.EntityFrameworkCore`, `DuonDevKit.AspNetCore`, `DuonDevKit.Dapper`, `DuonDevKit.Jwt`)
-   pointing at:
+   `DuonDevKit.EntityFrameworkCore`, `DuonDevKit.AspNetCore`, `DuonDevKit.Dapper`, `DuonDevKit.Jwt`,
+   `DuonDevKit.Validation`) pointing at:
    - Repository owner: `Duon0402`
    - Repository name: `DuonDevKit`
    - Workflow file: `publish.yml` (NuGet requires the file name only, not its path)
@@ -33,16 +34,17 @@ be attached to it.
 2. Bump `<Version>` in whichever of `DuonDevKit.Core/DuonDevKit.Core.csproj`,
    `DuonDevKit.EntityFrameworkCore/DuonDevKit.EntityFrameworkCore.csproj`,
    `DuonDevKit.AspNetCore/DuonDevKit.AspNetCore.csproj`,
-   `DuonDevKit.Dapper/DuonDevKit.Dapper.csproj`, or `DuonDevKit.Jwt/DuonDevKit.Jwt.csproj` changed.
+   `DuonDevKit.Dapper/DuonDevKit.Dapper.csproj`, `DuonDevKit.Jwt/DuonDevKit.Jwt.csproj`, or
+   `DuonDevKit.Validation/DuonDevKit.Validation.csproj` changed.
 3. Commit the version bump.
 4. Tag and push. Tags aren't tied 1:1 to a package version — each push of a `v*` tag just triggers
-   the workflow, which packs and pushes all five projects (`--skip-duplicate` no-ops whichever
+   the workflow, which packs and pushes all six projects (`--skip-duplicate` no-ops whichever
    package(s) didn't change this release):
    ```
    git tag vX.Y.Z
    git push origin vX.Y.Z
    ```
-5. The `publish` workflow runs automatically: build → test → pack → push all five `.nupkg` files to
+5. The `publish` workflow runs automatically: build → test → pack → push all six `.nupkg` files to
    NuGet.org (`--skip-duplicate`, so re-running a tag after a partial failure, or a tag where only
    some packages changed, won't error on packages already published).
 6. Confirm the expected package(s) appear on NuGet.org with the expected version.
@@ -57,8 +59,10 @@ dotnet pack DuonDevKit.EntityFrameworkCore/DuonDevKit.EntityFrameworkCore.csproj
 dotnet pack DuonDevKit.AspNetCore/DuonDevKit.AspNetCore.csproj --configuration Release --output ./nupkgs
 dotnet pack DuonDevKit.Dapper/DuonDevKit.Dapper.csproj --configuration Release --output ./nupkgs
 dotnet pack DuonDevKit.Jwt/DuonDevKit.Jwt.csproj --configuration Release --output ./nupkgs
+dotnet pack DuonDevKit.Validation/DuonDevKit.Validation.csproj --configuration Release --output ./nupkgs
 ```
 
 Inspect the generated `.nupkg` files (e.g. with `nuget.exe` or by renaming to `.zip`) to confirm
 metadata and the `DuonDevKit.EntityFrameworkCore`/`DuonDevKit.AspNetCore`/`DuonDevKit.Dapper`/
-`DuonDevKit.Jwt` → `DuonDevKit.Core` dependency versions look right before pushing a tag.
+`DuonDevKit.Jwt`/`DuonDevKit.Validation` → `DuonDevKit.Core` dependency versions look right before
+pushing a tag.

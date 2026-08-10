@@ -111,3 +111,23 @@ DateTime utcFromWallClock = businessOpeningTime.ToUtcFrom(newYork); // throws on
 ```
 
 `DateTime` overloads preserve `Kind`; `DateTimeOffset` overloads preserve `Offset`.
+
+## Validation
+
+`DataAnnotationsValidator` runs `System.ComponentModel.DataAnnotations` validation (`[Required]`,
+`[MaxLength]`, `[Range]`, a custom `IValidatableObject`, etc.) against any object and converts the
+outcome to a `Result` — no third-party dependency. Reach for `DuonDevKit.Validation`'s FluentValidation
+integration instead when rules need to be conditional, compare properties against each other, or call
+out to a database/service.
+
+```csharp
+using DuonDevKit.Core.Validation;
+
+Result validation = DataAnnotationsValidator.Validate(request);
+if (validation.IsFailure)
+    return validation.ToApiResult(); // DuonDevKit.AspNetCore
+```
+
+Every violation is joined into one message (`"PropertyName: ErrorMessage; ..."`) — for an HTTP endpoint
+that needs a field-level `{ "PropertyName": ["message"] }` response body instead, see
+`DuonDevKit.AspNetCore`'s `WithDuonDevKitValidation<T>()` Minimal API filter.

@@ -41,3 +41,31 @@ app.UseDuonDevKitExceptionHandling();
 ```
 
 The middleware logs the original exception and sends a 500 response with `Error.Unexpected`.
+
+## Automatic request validation (Minimal APIs)
+
+`WithDuonDevKitValidation<T>()` validates a bound parameter against its
+`System.ComponentModel.DataAnnotations` attributes before the handler runs, short-circuiting with a
+`400` field-level `ValidationProblem` if invalid — no dependency beyond the base class library.
+
+```csharp
+using DuonDevKit.AspNetCore.Validation;
+
+public class CreateOrderRequest
+{
+    [Required, MaxLength(100)]
+    public string CustomerName { get; set; } = string.Empty;
+
+    [Range(1, 1000)]
+    public int Quantity { get; set; }
+}
+
+app.MapPost("/orders", (CreateOrderRequest request) => Results.Ok())
+   .WithDuonDevKitValidation<CreateOrderRequest>();
+```
+
+An invalid request never reaches the handler; the response body is a standard
+`{ "errors": { "Quantity": ["..."] }, "errorCode": "VALIDATION_FAILED" }` shape. For rules that need to
+be conditional, compare properties against each other, or call out to a database/service, use
+`DuonDevKit.Validation`'s FluentValidation integration directly in the handler instead — it composes
+with the same `Result`-to-HTTP mapping shown above.
