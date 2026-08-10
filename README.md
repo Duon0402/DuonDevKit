@@ -1,6 +1,6 @@
 # DuonDevKit
 
-DuonDevKit is a collection of lightweight .NET 8 libraries for explicit error handling, data access, ASP.NET Core responses, and JWT authentication.
+DuonDevKit is a collection of lightweight .NET libraries (targeting `net8.0` and `net9.0`) for explicit error handling, data access, ASP.NET Core responses, and JWT authentication.
 
 ## Packages
 
@@ -14,7 +14,7 @@ DuonDevKit is a collection of lightweight .NET 8 libraries for explicit error ha
 
 ## Getting started
 
-Requires the .NET 8 SDK.
+Requires the .NET 8 SDK, the .NET 9 SDK, or both (building/testing the full solution locally builds both `net8.0` and `net9.0` targets).
 
 Install only the packages your application needs. Packages that depend on another DuonDevKit package bring that dependency in automatically.
 

@@ -17,10 +17,13 @@ namespace DuonDevKit.Jwt.Tests
 
     public static class TestFactory
     {
-        public static (TestDbContext Context, IRefreshTokenService Service) CreateRefreshTokenService(JwtSettings settings, IJwtTokenGenerator? tokenGenerator = null)
+        public static (TestDbContext Context, IRefreshTokenService Service) CreateRefreshTokenService(
+            JwtSettings settings,
+            IJwtTokenGenerator? tokenGenerator = null,
+            string? databaseName = null)
         {
             var options = new DbContextOptionsBuilder<TestDbContext>()
-                .UseInMemoryDatabase(Guid.NewGuid().ToString())
+                .UseInMemoryDatabase(databaseName ?? Guid.NewGuid().ToString())
                 .Options;
 
             var context = new TestDbContext(options);

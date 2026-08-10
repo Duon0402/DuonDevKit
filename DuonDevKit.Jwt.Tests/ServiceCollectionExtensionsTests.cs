@@ -72,6 +72,20 @@ namespace DuonDevKit.Jwt.Tests
         }
 
         [Fact]
+        public void AddDuonDevKitJwt_SigningKeyShorterThan32Bytes_Throws()
+        {
+            var services = new ServiceCollection();
+            var settings = new JwtSettings
+            {
+                SigningKey = "too-short",
+                Issuer = "test-issuer",
+                Audience = "test-audience",
+            };
+
+            Assert.Throws<ArgumentException>(() => services.AddDuonDevKitJwt(settings));
+        }
+
+        [Fact]
         public async Task AddDuonDevKitJwt_ConfiguresJwtBearerAuthenticationScheme()
         {
             await using var scope = BuildProvider().CreateAsyncScope();

@@ -12,6 +12,13 @@ namespace DuonDevKit.EntityFrameworkCore.Repositories
     /// <remarks>Creates a repository backed by <paramref name="context"/>.</remarks>
     public class Repository<T>(DbContext context) : IRepository<T> where T : class
     {
+        /// <summary>
+        /// Upper bound enforced by <see cref="ListPagedAsync"/> — without one, a caller-supplied
+        /// <c>pageSize</c> of e.g. <see cref="int.MaxValue"/> would materialize the entire table into
+        /// memory in a single page, an easy accidental (or malicious) denial-of-service vector.
+        /// </summary>
+        private const int MaxPageSize = 500;
+
         /// <summary>The underlying <see cref="DbContext"/>. Exposed as <c>protected</c> so <see cref="Repository{T, TId}"/> can reuse it.</summary>
         protected readonly DbContext _context = context;
 
@@ -74,6 +81,9 @@ namespace DuonDevKit.EntityFrameworkCore.Repositories
             if (validation.IsFailure)
                 return Result.Fail<PagedResult<T>>(validation.Error);
 
+            if (pageSize > MaxPageSize)
+                return Error.Validation(ErrorCodes.PageSizeTooLarge, $"{nameof(pageSize)} must not exceed {MaxPageSize}.");
+
             IQueryable<T> query = _context.Set<T>();
             if (filter is not null)
                 query = query.Where(filter);
@@ -108,33 +118,54 @@ namespace DuonDevKit.EntityFrameworkCore.Repositories
         /// <inheritdoc />
         public Result Update(T entity)
         {
-            _context.Set<T>().Update(entity);
-            return Result.Success();
+            try
+            {
+                _context.Set<T>().Update(entity);
+                return Result.Success();
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Error.Conflict(ErrorCodes.EntityAlreadyTracked, ex.Message);
+            }
         }
 
         /// <inheritdoc />
         public Result UpdateRange(IEnumerable<T> entities)
         {
-            _context.Set<T>().UpdateRange(entities);
-            return Result.Success();
+            try
+            {
+                _context.Set<T>().UpdateRange(entities);
+                return Result.Success();
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Error.Conflict(ErrorCodes.EntityAlreadyTracked, ex.Message);
+            }
         }
 
         /// <inheritdoc />
         public Result Remove(T entity)
         {
-            if (_context.Entry(entity).State == EntityState.Detached)
-                _context.Attach(entity);
-
-            if (entity is ISoftDelete softDeletable)
+            try
             {
-                softDeletable.IsDeleted = true;
-            }
-            else
-            {
-                _context.Set<T>().Remove(entity);
-            }
+                if (_context.Entry(entity).State == EntityState.Detached)
+                    _context.Attach(entity);
 
-            return Result.Success();
+                if (entity is ISoftDelete softDeletable)
+                {
+                    softDeletable.IsDeleted = true;
+                }
+                else
+                {
+                    _context.Set<T>().Remove(entity);
+                }
+
+                return Result.Success();
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Error.Conflict(ErrorCodes.EntityAlreadyTracked, ex.Message);
+            }
         }
 
         /// <inheritdoc />
@@ -142,23 +173,30 @@ namespace DuonDevKit.EntityFrameworkCore.Repositories
         {
             var list = entities as IReadOnlyList<T> ?? entities.ToList();
 
-            var detached = list.Where(e => _context.Entry(e).State == EntityState.Detached).ToList();
-            if (detached.Count > 0)
-                _context.AttachRange(detached);
-
-            var hardDelete = new List<T>(list.Count);
-            foreach (var entity in list)
+            try
             {
-                if (entity is ISoftDelete softDeletable)
-                    softDeletable.IsDeleted = true;
-                else
-                    hardDelete.Add(entity);
+                var detached = list.Where(e => _context.Entry(e).State == EntityState.Detached).ToList();
+                if (detached.Count > 0)
+                    _context.AttachRange(detached);
+
+                var hardDelete = new List<T>(list.Count);
+                foreach (var entity in list)
+                {
+                    if (entity is ISoftDelete softDeletable)
+                        softDeletable.IsDeleted = true;
+                    else
+                        hardDelete.Add(entity);
+                }
+
+                if (hardDelete.Count > 0)
+                    _context.Set<T>().RemoveRange(hardDelete);
+
+                return Result.Success();
             }
-
-            if (hardDelete.Count > 0)
-                _context.Set<T>().RemoveRange(hardDelete);
-
-            return Result.Success();
+            catch (InvalidOperationException ex)
+            {
+                return Error.Conflict(ErrorCodes.EntityAlreadyTracked, ex.Message);
+            }
         }
     }
 }

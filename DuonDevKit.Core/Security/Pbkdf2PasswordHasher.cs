@@ -9,7 +9,7 @@ namespace DuonDevKit.Core.Security
     /// so <see cref="Verify"/> never needs the iteration count passed in separately, and the iteration
     /// count can be raised in a later release without invalidating hashes already stored.
     /// </summary>
-    public sealed class Pbkdf2PasswordHasher(int iterations = 100_000) : IPasswordHasher
+    public sealed class Pbkdf2PasswordHasher(int iterations = 600_000) : IPasswordHasher
     {
         private const int SaltSize = 16;
         private const int HashSize = 32;
@@ -26,8 +26,11 @@ namespace DuonDevKit.Core.Security
         /// <inheritdoc />
         public bool Verify(string password, string hashedPassword)
         {
+            if (string.IsNullOrEmpty(hashedPassword))
+                return false;
+
             var parts = hashedPassword.Split('.');
-            if (parts.Length != 3 || !int.TryParse(parts[0], out var storedIterations))
+            if (parts.Length != 3 || !int.TryParse(parts[0], out var storedIterations) || storedIterations <= 0)
                 return false;
 
             byte[] salt, expectedHash;
@@ -41,7 +44,21 @@ namespace DuonDevKit.Core.Security
                 return false;
             }
 
-            var actualHash = Rfc2898DeriveBytes.Pbkdf2(password, salt, storedIterations, HashAlgorithmName.SHA256, expectedHash.Length);
+            if (salt.Length == 0 || expectedHash.Length == 0)
+                return false;
+
+            byte[] actualHash;
+            try
+            {
+                actualHash = Rfc2898DeriveBytes.Pbkdf2(password, salt, storedIterations, HashAlgorithmName.SHA256, expectedHash.Length);
+            }
+            catch (Exception)
+            {
+                // Any other malformed-input failure from a corrupted/hand-edited hash string (e.g. an
+                // absurdly large iteration count) — Verify's contract is "never throw", always fall through
+                // to false instead.
+                return false;
+            }
 
             return CryptographicOperations.FixedTimeEquals(actualHash, expectedHash);
         }

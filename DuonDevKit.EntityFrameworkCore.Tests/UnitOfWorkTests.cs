@@ -221,6 +221,43 @@ namespace DuonDevKit.EntityFrameworkCore.Tests
         }
 
         [Fact]
+        public async Task SaveChangesAsync_FailsWhileManualTransactionActive_RollsBackAndAllowsANewTransactionAfterward()
+        {
+            using var connection = new SqliteConnection("DataSource=:memory:");
+            connection.Open();
+            var options = new DbContextOptionsBuilder<TestDbContext>().UseSqlite(connection).Options;
+            using var context = new ThrowingDbContext(options);
+            context.Database.EnsureCreated();
+            var unitOfWork = new UnitOfWork(context);
+            await unitOfWork.BeginTransactionAsync();
+
+            var saveResult = await unitOfWork.SaveChangesAsync();
+
+            Assert.True(saveResult.IsFailure);
+
+            // Only possible if the failed save above rolled back and cleared the transaction the manual
+            // API left active — otherwise this would fail with TransactionAlreadyActive.
+            var secondBeginResult = await unitOfWork.BeginTransactionAsync();
+            Assert.True(secondBeginResult.IsSuccess);
+        }
+
+        [Fact]
+        public async Task ExecuteInTransactionAsync_WhileManualTransactionActive_ReturnsFailureInsteadOfThrowing()
+        {
+            using var fixture = new SqliteFixture();
+            var unitOfWork = new UnitOfWork(fixture.Context);
+            await unitOfWork.BeginTransactionAsync();
+
+            var result = await unitOfWork.ExecuteInTransactionAsync(async ct =>
+            {
+                await fixture.Context.TestEntities.AddAsync(new TestEntity { Name = "A" }, ct);
+                return Result.Success();
+            });
+
+            Assert.True(result.IsFailure);
+        }
+
+        [Fact]
         public async Task DisposeAsync_WithActiveTransaction_DisposesItWithoutThrowing()
         {
             using var fixture = new SqliteFixture();

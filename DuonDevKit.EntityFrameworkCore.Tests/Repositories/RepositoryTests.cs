@@ -139,6 +139,17 @@ namespace DuonDevKit.EntityFrameworkCore.Tests.Repositories
         }
 
         [Fact]
+        public async Task ListPagedAsync_PageSizeAboveTheEnforcedMaximum_ReturnsFailureInsteadOfMaterializingEverything()
+        {
+            using var context = CreateContext();
+            var repository = new Repository<TestEntity>(context);
+
+            var result = await repository.ListPagedAsync(pageNumber: 1, pageSize: 1_000_000);
+
+            Assert.True(result.IsFailure);
+        }
+
+        [Fact]
         public async Task AddAsync_ValidEntity_ReturnsSuccessAndPersists()
         {
             using var context = CreateContext();
@@ -250,6 +261,24 @@ namespace DuonDevKit.EntityFrameworkCore.Tests.Repositories
             using var verifyContext = CreateContext(databaseName);
             var reloaded = await verifyContext.TestEntities.FindAsync(id);
             Assert.Equal("A-changed", reloaded!.Name);
+        }
+
+        [Fact]
+        public async Task Update_EntityAlreadyTrackedByADifferentInstance_ReturnsFailureInsteadOfThrowing()
+        {
+            using var context = CreateContext();
+            var repository = new Repository<TestEntity>(context);
+            var entity = new TestEntity { Name = "A" };
+            context.TestEntities.Add(entity);
+            await context.SaveChangesAsync();
+
+            // The context already tracks `entity` for this id — attaching a second, different instance
+            // with the same key is what EF Core rejects with InvalidOperationException.
+            var conflictingInstance = new TestEntity { Id = entity.Id, Name = "A-conflicting" };
+
+            var result = repository.Update(conflictingInstance);
+
+            Assert.True(result.IsFailure);
         }
 
         [Fact]

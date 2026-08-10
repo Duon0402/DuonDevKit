@@ -1,6 +1,6 @@
 # DuonDevKit.Core
 
-Core primitives for explicit, railway-oriented error handling in .NET 8: `Result`, `Error`, `Option`, guard clauses, object mapping, password hashing, and common extensions.
+Core primitives for explicit, railway-oriented error handling in .NET (`net8.0`/`net9.0`): `Result`, `Error`, `Option`, guard clauses, object mapping, password hashing, and common extensions.
 
 ## Installation
 

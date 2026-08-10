@@ -21,6 +21,10 @@ namespace DuonDevKit.Jwt.DependencyInjection
         /// </summary>
         public static IServiceCollection AddDuonDevKitJwt(this IServiceCollection services, JwtSettings settings)
         {
+            var keyLength = Encoding.UTF8.GetByteCount(settings.SigningKey);
+            if (keyLength < 32)
+                throw new ArgumentException($"JwtSettings.SigningKey must be at least 32 bytes (256 bits) of entropy for HMAC-SHA256; got {keyLength} bytes.", nameof(settings));
+
             services.AddSingleton(settings);
             services.AddHttpContextAccessor();
 
@@ -28,7 +32,7 @@ namespace DuonDevKit.Jwt.DependencyInjection
             if (existingCurrentUserProvider is null || existingCurrentUserProvider.ImplementationType == typeof(NullCurrentUserProvider))
                 services.Replace(ServiceDescriptor.Scoped<ICurrentUserProvider, HttpContextCurrentUserProvider>());
 
-            services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
+            services.AddSingleton<IJwtTokenGenerator, JwtTokenGenerator>();
             services.AddScoped<IRefreshTokenService, RefreshTokenService>();
 
             services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)

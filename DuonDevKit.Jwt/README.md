@@ -20,7 +20,7 @@ using DuonDevKit.Jwt.DependencyInjection;
 services.AddDuonDevKitEntityFrameworkCore<AppDbContext>();
 services.AddDuonDevKitJwt(new JwtSettings
 {
-    SigningKey = builder.Configuration["Jwt:SigningKey"]!, // at least 32 bytes of entropy
+    SigningKey = builder.Configuration["Jwt:SigningKey"]!, // must be >= 32 bytes — AddDuonDevKitJwt throws otherwise
     Issuer = "MyApp",
     Audience = "MyApp",
 });
