@@ -1,6 +1,6 @@
 # DuonDevKit.EntityFrameworkCore
 
-Result-based EF Core repositories and unit of work for .NET 8, with auditing, soft deletion, pagination, and dependency-injection helpers. Requires `DuonDevKit.Core`.
+Result-based EF Core repositories and unit of work for .NET (`net8.0`/`net9.0`), with auditing, soft deletion, pagination, and dependency-injection helpers. Requires `DuonDevKit.Core`.
 
 ## Installation
 
