@@ -8,7 +8,7 @@
 
   <PropertyGroup>
     <PackageId>DuonDevKit.AspNetCore</PackageId>
-    <Version>0.2.1</Version>
+    <Version>0.2.2</Version>
     <Description>ASP.NET Core integration for DuonDevKit.Core's Result pattern — maps Result/Result&lt;T&gt; to IActionResult (MVC) and IResult (Minimal APIs) using Error.ToHttpStatusCode(), as ProblemDetails on failure.</Description>
     <PackageTags>aspnetcore;result;railway-oriented-programming;problemdetails;minimal-api;dotnet</PackageTags>
     <IsPackable>true</IsPackable>

@@ -8,8 +8,8 @@
 
   <PropertyGroup>
     <PackageId>DuonDevKit.Core</PackageId>
-    <Version>0.5.1</Version>
-    <Description>Railway-oriented Result/Error pattern for .NET — Result, Result&lt;T&gt;, Error, Option&lt;T&gt;, Guard clauses, AutoMapper-free object mapping, PBKDF2 password hashing, and async chaining extensions.</Description>
+    <Version>0.6.0</Version>
+    <Description>Railway-oriented Result/Error pattern for .NET — Result, Result&lt;T&gt;, Error, Option&lt;T&gt;, Guard clauses, AutoMapper-free object mapping, PBKDF2 password hashing, DateTime/DateTimeOffset extensions, and async chaining extensions.</Description>
     <PackageTags>result;railway-oriented-programming;error-handling;option;guard-clauses;mapping;security;dotnet</PackageTags>
     <IsPackable>true</IsPackable>
   </PropertyGroup>
