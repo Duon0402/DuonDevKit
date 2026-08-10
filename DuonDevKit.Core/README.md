@@ -79,3 +79,19 @@ IPasswordHasher hasher = new Pbkdf2PasswordHasher();
 string hash = hasher.Hash(password);
 bool valid = hasher.Verify(password, hash);
 ```
+
+## DateTime/DateTimeOffset extensions
+
+`StartOfX`/`EndOfX` helpers (`Day`, `Week`, `Month`, `Year`) for `DateTime` and `DateTimeOffset`. `StartOfX` returns midnight of the first day in the period; `EndOfX` returns the last tick of the last day (`23:59:59.9999999`), so a range check like `date >= StartOfMonth && date <= EndOfMonth` includes the entire last day.
+
+```csharp
+using DuonDevKit.Core.Extensions;
+
+DateTime today = DateTime.UtcNow;
+DateTime firstOfMonth = today.StartOfMonth();
+DateTime lastInstantOfMonth = today.EndOfMonth();
+
+DateTime mondayOfThisWeek = today.StartOfWeek(); // defaults to Monday
+```
+
+`DateTime` overloads preserve `Kind`; `DateTimeOffset` overloads preserve `Offset`.
