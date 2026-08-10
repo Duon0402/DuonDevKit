@@ -17,6 +17,14 @@ namespace DuonDevKit.EntityFrameworkCore.DependencyInjection
         /// alongside <c>DuonDevKit.Dapper</c>'s <c>AddDuonDevKitDapper&lt;TContext&gt;</c> — both map the
         /// same <see cref="DbContext"/> registration idempotently.
         /// </summary>
+        /// <remarks>
+        /// Supports exactly one <see cref="DbContext"/> type per <see cref="IServiceCollection"/> — the
+        /// <c>DbContext</c> forwarding registration uses <c>TryAdd</c>, so calling this a second time for a
+        /// different <typeparamref name="TContext"/> is a no-op for that forwarding, and every
+        /// <see cref="IUnitOfWork"/>/<see cref="IRepository{T}"/> in the app resolves against whichever
+        /// context type was registered first. Not supported: register a separate <see cref="IUnitOfWork"/>/
+        /// repository set per context manually if the app genuinely needs more than one.
+        /// </remarks>
         public static IServiceCollection AddDuonDevKitEntityFrameworkCore<TContext>(this IServiceCollection services)
             where TContext : DbContext
         {

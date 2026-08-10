@@ -46,6 +46,22 @@ namespace DuonDevKit.AspNetCore.Tests
         }
 
         [Fact]
+        public void ToActionResult_UnexpectedError_HidesRawMessageBehindGenericDetail()
+        {
+            // Error.Message on an Unexpected error is frequently a caught DB/infra exception's raw text
+            // (connection strings, query fragments, schema) — it must never reach an HTTP client, even
+            // though it's shown as-is for every other ErrorType.
+            var error = Error.Unexpected("SYS001", "Timeout expired connecting to 10.0.0.5:5432, database='internal_prod'.");
+            var result = Result.Fail(error);
+
+            var actionResult = Assert.IsType<ObjectResult>(result.ToActionResult());
+            var problem = Assert.IsType<ProblemDetails>(actionResult.Value);
+
+            Assert.Equal("An unexpected error occurred.", problem.Detail);
+            Assert.Equal("SYS001", problem.Extensions["errorCode"]);
+        }
+
+        [Fact]
         public void ToActionResult_FailedResultOfT_ReturnsProblemDetailsWithMappedStatusAndErrorCode()
         {
             var error = Error.Validation("VAL001", "Name is required.");

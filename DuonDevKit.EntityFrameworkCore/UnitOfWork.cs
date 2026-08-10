@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Storage;
 namespace DuonDevKit.EntityFrameworkCore
 {
     /// <summary>Default <see cref="IUnitOfWork"/> implementation backed by a single <see cref="DbContext"/>.</summary>
-    public class UnitOfWork(DbContext context) : IUnitOfWork, IAsyncDisposable
+    public class UnitOfWork(DbContext context) : IUnitOfWork, IAsyncDisposable, IDisposable
     {
         private readonly DbContext _context = context;
         private IDbContextTransaction? _currentTransaction;
@@ -21,11 +21,35 @@ namespace DuonDevKit.EntityFrameworkCore
             }
             catch (DbUpdateConcurrencyException ex)
             {
+                await RollbackActiveTransactionOnFailureAsync(ct);
                 return Error.Conflict(ErrorCodes.ConcurrencyConflict, ex.Message);
             }
             catch (DbUpdateException ex)
             {
+                await RollbackActiveTransactionOnFailureAsync(ct);
                 return Error.Unexpected(ErrorCodes.UnexpectedDbError, ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Automatically rolls back and clears a manually-started transaction (<see cref="BeginTransactionAsync"/>)
+        /// when <see cref="SaveChangesAsync"/> fails while one is active — without this, a failed save left the
+        /// transaction open until the caller explicitly rolled it back or this <see cref="UnitOfWork"/> was
+        /// disposed, silently keeping a half-applied unit of work's lock/transaction alive in the meantime.
+        /// A no-op if no manual transaction is active (including inside <see cref="ExecuteInTransactionAsync"/>,
+        /// which owns and disposes its own local transaction independently of this field).
+        /// </summary>
+        private async Task RollbackActiveTransactionOnFailureAsync(CancellationToken ct)
+        {
+            if (_currentTransaction is null) return;
+
+            try
+            {
+                await _currentTransaction.RollbackAsync(ct);
+            }
+            finally
+            {
+                await ClearCurrentTransactionAsync();
             }
         }
 
@@ -94,44 +118,86 @@ namespace DuonDevKit.EntityFrameworkCore
         /// <inheritdoc />
         public Task<Result> ExecuteInTransactionAsync(Func<CancellationToken, Task<Result>> operation, CancellationToken ct = default)
         {
+            if (_currentTransaction is not null)
+                return Task.FromResult(Result.Fail(Error.Business(ErrorCodes.TransactionAlreadyActive, "A transaction is already active on this unit of work.")));
+
             var strategy = _context.Database.CreateExecutionStrategy();
 
             return strategy.ExecuteAsync(async () =>
             {
-                await using var transaction = await _context.Database.BeginTransactionAsync(ct);
+                IDbContextTransaction transaction;
+                try
+                {
+                    transaction = await _context.Database.BeginTransactionAsync(ct);
+                }
+                catch (Exception ex)
+                {
+                    return Error.Unexpected(ErrorCodes.TransactionError, ex.Message);
+                }
 
-                var result = await operation(ct);
-                if (result.IsFailure)
-                    return result;
+                await using (transaction)
+                {
+                    var result = await operation(ct);
+                    if (result.IsFailure)
+                        return result;
 
-                var saveResult = await SaveChangesAsync(ct);
-                if (saveResult.IsFailure)
-                    return saveResult;
+                    var saveResult = await SaveChangesAsync(ct);
+                    if (saveResult.IsFailure)
+                        return saveResult;
 
-                await transaction.CommitAsync(ct);
-                return Result.Success();
+                    try
+                    {
+                        await transaction.CommitAsync(ct);
+                        return Result.Success();
+                    }
+                    catch (Exception ex)
+                    {
+                        return Error.Unexpected(ErrorCodes.TransactionError, ex.Message);
+                    }
+                }
             });
         }
 
         /// <inheritdoc />
         public Task<Result<T>> ExecuteInTransactionAsync<T>(Func<CancellationToken, Task<Result<T>>> operation, CancellationToken ct = default)
         {
+            if (_currentTransaction is not null)
+                return Task.FromResult(Result.Fail<T>(Error.Business(ErrorCodes.TransactionAlreadyActive, "A transaction is already active on this unit of work.")));
+
             var strategy = _context.Database.CreateExecutionStrategy();
 
             return strategy.ExecuteAsync(async () =>
             {
-                await using var transaction = await _context.Database.BeginTransactionAsync(ct);
+                IDbContextTransaction transaction;
+                try
+                {
+                    transaction = await _context.Database.BeginTransactionAsync(ct);
+                }
+                catch (Exception ex)
+                {
+                    return Result.Fail<T>(Error.Unexpected(ErrorCodes.TransactionError, ex.Message));
+                }
 
-                var result = await operation(ct);
-                if (result.IsFailure)
-                    return result;
+                await using (transaction)
+                {
+                    var result = await operation(ct);
+                    if (result.IsFailure)
+                        return result;
 
-                var saveResult = await SaveChangesAsync(ct);
-                if (saveResult.IsFailure)
-                    return Result.Fail<T>(saveResult.Error);
+                    var saveResult = await SaveChangesAsync(ct);
+                    if (saveResult.IsFailure)
+                        return Result.Fail<T>(saveResult.Error);
 
-                await transaction.CommitAsync(ct);
-                return result;
+                    try
+                    {
+                        await transaction.CommitAsync(ct);
+                        return result;
+                    }
+                    catch (Exception ex)
+                    {
+                        return Result.Fail<T>(Error.Unexpected(ErrorCodes.TransactionError, ex.Message));
+                    }
+                }
             });
         }
 
@@ -146,5 +212,21 @@ namespace DuonDevKit.EntityFrameworkCore
         /// <summary>Disposes any transaction left active by <see cref="BeginTransactionAsync"/>. Does not dispose the underlying <see cref="DbContext"/>, which this class does not own.</summary>
         public async ValueTask DisposeAsync()
             => await ClearCurrentTransactionAsync();
+
+        /// <summary>
+        /// Synchronous fallback for hosts that dispose their DI scope with <c>using</c> instead of
+        /// <c>await using</c> (e.g. a console app or worker service) — without this, disposing such a
+        /// scope while a transaction is active throws, because the default <c>ServiceProvider</c> disposal
+        /// path only calls <see cref="IDisposable.Dispose"/>, never <see cref="IAsyncDisposable.DisposeAsync"/>,
+        /// on a type that implements both. Prefer <c>await using</c> where possible; this exists so a
+        /// synchronous scope doesn't throw, not to make blocking on transaction cleanup idiomatic.
+        /// </summary>
+        public void Dispose()
+        {
+            if (_currentTransaction is null) return;
+
+            _currentTransaction.Dispose();
+            _currentTransaction = null;
+        }
     }
 }

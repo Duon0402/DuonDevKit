@@ -143,6 +143,33 @@ namespace DuonDevKit.EntityFrameworkCore.Tests.Auditing
         }
 
         [Fact]
+        public async Task UpdatingViaContextUpdate_DisconnectedEntityWithExplicitUpdatedBy_OverwritesItAnyway()
+        {
+            // Documents a known, intentional limitation (see ICanUpdate's XML doc): unlike the tracked-entity
+            // path (UpdatingEntity_WithExplicitUpdatedBy_DoesNotOverwrite above), a disconnected entity
+            // attached via DbSet.Update() has no real "original" value for EF Core to diff against — every
+            // property reports as unchanged — so the interceptor can't distinguish "caller set this" from
+            // "caller didn't touch this" here, and always fills both fields.
+            var user = new StubCurrentUserProvider { UserId = "alice" };
+            var databaseName = Guid.NewGuid().ToString();
+            int id;
+            using (var context = CreateContext(user, databaseName))
+            {
+                var entity = new TestEntity { Name = "A" };
+                context.TestEntities.Add(entity);
+                await context.SaveChangesAsync();
+                id = entity.Id;
+            }
+
+            using var updateContext = CreateContext(user, databaseName);
+            var detached = new TestEntity { Id = id, Name = "A-changed", UpdatedBy = "manual-override" };
+            updateContext.TestEntities.Update(detached);
+            await updateContext.SaveChangesAsync();
+
+            Assert.Equal("alice", detached.UpdatedBy);
+        }
+
+        [Fact]
         public async Task AddingPlainEntity_WithNoAuditInterfaces_DoesNotThrow()
         {
             var user = new StubCurrentUserProvider { UserId = "alice" };

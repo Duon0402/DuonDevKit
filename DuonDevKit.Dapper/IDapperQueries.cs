@@ -9,6 +9,12 @@ namespace DuonDevKit.Dapper
     /// <see cref="Result"/>/<see cref="Result{T}"/> so a <c>DbException</c> surfaces the same way an
     /// EF Core failure does, instead of throwing.
     /// </summary>
+    /// <remarks>
+    /// <paramref name="sql"/> is passed straight to Dapper as a parameterized command — always pass
+    /// caller-supplied values via <paramref name="parameters"/> (e.g. <c>@userId</c>), never by
+    /// concatenating/interpolating them into the <paramref name="sql"/> string itself, or every method
+    /// here becomes a SQL injection vector.
+    /// </remarks>
     public interface IDapperQueries
     {
         /// <summary>Runs <paramref name="sql"/> and maps every row to <typeparamref name="T"/>.</summary>

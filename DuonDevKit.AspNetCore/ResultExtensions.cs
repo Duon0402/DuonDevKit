@@ -48,6 +48,19 @@ namespace DuonDevKit.AspNetCore
                 extensions: problem.Extensions);
         }
 
+        /// <summary>
+        /// Generic detail shown for <see cref="ErrorType.Unexpected"/> errors instead of
+        /// <see cref="Error.Message"/> — that message is frequently a caught exception's raw text
+        /// (e.g. <see cref="DuonDevKit.EntityFrameworkCore.UnitOfWork.SaveChangesAsync"/>,
+        /// <c>DuonDevKit.Dapper.DapperQueries</c>), which can contain internal details (schema, query
+        /// fragments) that shouldn't reach an HTTP client. Mirrors the behavior of
+        /// <see cref="ApplicationBuilderExtensions.UseDuonDevKitExceptionHandling"/> for genuinely
+        /// unhandled exceptions, so a caught-and-converted-to-Result failure isn't held to a weaker
+        /// disclosure standard than an uncaught one. The original message is still on <c>Error.Message</c>
+        /// for the caller to log — this only affects what's serialized to the client.
+        /// </summary>
+        private const string UnexpectedErrorDetail = "An unexpected error occurred.";
+
         private static ProblemDetails ToProblemDetails(Error error)
         {
             var statusCode = (int)error.ToHttpStatusCode();
@@ -55,7 +68,7 @@ namespace DuonDevKit.AspNetCore
             {
                 Status = statusCode,
                 Title = error.Type.ToString(),
-                Detail = error.Message,
+                Detail = error.Type == ErrorType.Unexpected ? UnexpectedErrorDetail : error.Message,
                 Extensions = { [ErrorCodeExtensionKey] = error.Code },
             };
         }
