@@ -20,7 +20,7 @@
          need a per-TFM version split. -->
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.18" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="9.0.18" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.18" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.10" />
   </ItemGroup>
 
   <ItemGroup>
