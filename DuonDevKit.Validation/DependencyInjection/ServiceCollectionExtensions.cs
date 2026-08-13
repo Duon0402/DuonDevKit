@@ -34,7 +34,9 @@ namespace DuonDevKit.Validation.DependencyInjection
         {
             foreach (var type in candidateTypes)
             {
-                if (type.IsAbstract || type.IsInterface)
+                // IsGenericTypeDefinition excludes an unbound generic validator (e.g. BaseValidator<T>) —
+                // it can't be registered as-is and would otherwise only fail later, at BuildServiceProvider().
+                if (type.IsAbstract || type.IsInterface || type.IsGenericTypeDefinition)
                     continue;
 
                 foreach (var implementedInterface in type.GetInterfaces())

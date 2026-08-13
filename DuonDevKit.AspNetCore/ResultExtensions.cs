@@ -3,6 +3,8 @@ using DuonDevKit.Core.Extensions;
 using DuonDevKit.Core.Results;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Infrastructure;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace DuonDevKit.AspNetCore
 {
@@ -14,27 +16,41 @@ namespace DuonDevKit.AspNetCore
     /// </summary>
     public static class ResultExtensions
     {
-        private const string ErrorCodeExtensionKey = "errorCode";
+        internal const string ErrorCodeExtensionKey = "errorCode";
 
-        /// <summary>Maps a successful result to <c>204 No Content</c>, or a failed one to a <see cref="ProblemDetails"/> result.</summary>
-        public static IActionResult ToActionResult(this Result result)
-            => result.IsSuccess ? new NoContentResult() : ToProblemActionResult(result.Error);
+        /// <summary>
+        /// Maps a successful result to <c>204 No Content</c>, or a failed one to a <see cref="ProblemDetails"/> result.
+        /// Pass <paramref name="httpContext"/> (e.g. a controller's <c>HttpContext</c>) so any host-configured
+        /// <c>ProblemDetailsOptions.CustomizeProblemDetails</c> runs the same way it does for <see cref="ToApiResult(Result)"/>.
+        /// </summary>
+        public static IActionResult ToActionResult(this Result result, HttpContext? httpContext = null)
+            => result.IsSuccess ? new NoContentResult() : ToProblemActionResult(result.Error, httpContext);
 
-        /// <summary>Maps a successful result to <c>200 OK</c> with <see cref="Result{T}.Value"/> as the body, or a failed one to a <see cref="ProblemDetails"/> result.</summary>
-        public static IActionResult ToActionResult<T>(this Result<T> result)
-            => result.IsSuccess ? new OkObjectResult(result.Value) : ToProblemActionResult(result.Error);
+        /// <summary>Maps a successful result to <c>200 OK</c> with <see cref="Result{T}.Value"/> as the body, or a failed one to a <see cref="ProblemDetails"/> result. See <see cref="ToActionResult(Result, HttpContext?)"/> for <paramref name="httpContext"/>.</summary>
+        public static IActionResult ToActionResult<T>(this Result<T> result, HttpContext? httpContext = null)
+            => result.IsSuccess ? new OkObjectResult(result.Value) : ToProblemActionResult(result.Error, httpContext);
 
-        /// <summary>Minimal API equivalent of <see cref="ToActionResult(Result)"/>.</summary>
+        /// <summary>Minimal API equivalent of <see cref="ToActionResult(Result, HttpContext?)"/>.</summary>
         public static IResult ToApiResult(this Result result)
             => result.IsSuccess ? Results.NoContent() : ToProblemApiResult(result.Error);
 
-        /// <summary>Minimal API equivalent of <see cref="ToActionResult{T}(Result{T})"/>.</summary>
+        /// <summary>Minimal API equivalent of <see cref="ToActionResult{T}(Result{T}, HttpContext?)"/>.</summary>
         public static IResult ToApiResult<T>(this Result<T> result)
             => result.IsSuccess ? Results.Ok(result.Value) : ToProblemApiResult(result.Error);
 
-        private static ObjectResult ToProblemActionResult(Error error)
+        private static ObjectResult ToProblemActionResult(Error error, HttpContext? httpContext)
         {
             var problem = ToProblemDetails(error);
+
+            // Route through the host's ProblemDetailsFactory (when available) so CustomizeProblemDetails
+            // applies here too, matching ToApiResult's Results.Problem(...) behavior.
+            var factory = httpContext?.RequestServices.GetService<ProblemDetailsFactory>();
+            if (factory is not null)
+            {
+                problem = factory.CreateProblemDetails(httpContext!, problem.Status, problem.Title, detail: problem.Detail);
+                problem.Extensions[ErrorCodeExtensionKey] = error.Code;
+            }
+
             return new ObjectResult(problem) { StatusCode = problem.Status };
         }
 
@@ -67,10 +83,14 @@ namespace DuonDevKit.AspNetCore
             return new ProblemDetails
             {
                 Status = statusCode,
-                Title = error.Type.ToString(),
+                Title = ToTitle(error.Type),
                 Detail = error.Type == ErrorType.Unexpected ? UnexpectedErrorDetail : error.Message,
                 Extensions = { [ErrorCodeExtensionKey] = error.Code },
             };
         }
+
+        /// <summary>Renders an <see cref="ErrorType"/> as a space-separated phrase (e.g. <see cref="ErrorType.NotFound"/> → <c>"Not Found"</c>) instead of its raw enum name.</summary>
+        private static string ToTitle(ErrorType errorType)
+            => string.Concat(errorType.ToString().Select((c, i) => i > 0 && char.IsUpper(c) ? " " + c : c.ToString()));
     }
 }

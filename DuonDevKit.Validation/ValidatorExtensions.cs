@@ -11,10 +11,10 @@ namespace DuonDevKit.Validation
     /// DuonDevKit without the caller touching <see cref="ValidationResult"/> directly.
     /// </summary>
     /// <remarks>
-    /// The resulting <see cref="Error"/> carries every failure joined into one message
-    /// (<c>"PropertyName: ErrorMessage; ..."</c>) — <see cref="Error"/> has no field-level structure to
-    /// preserve a per-property error list. For an HTTP endpoint that needs a field-level
-    /// <c>{ "PropertyName": ["message"] }</c> response body, validate directly against
+    /// The resulting <see cref="Error"/> carries every blocking (<see cref="Severity.Error"/>) failure
+    /// joined into one message (<c>"PropertyName: ErrorMessage; ..."</c>) — <see cref="Error"/> has no
+    /// field-level structure to preserve a per-property error list. For an HTTP endpoint that needs a
+    /// field-level <c>{ "PropertyName": ["message"] }</c> response body, validate directly against
     /// <see cref="IValidator{T}"/>/<see cref="ValidationResult"/> instead of going through this
     /// extension — see <c>DuonDevKit.AspNetCore</c>'s <c>WithDuonDevKitValidation&lt;T&gt;()</c> for that
     /// case (DataAnnotations-based, so it needs no dependency on this package).
@@ -24,9 +24,9 @@ namespace DuonDevKit.Validation
         /// <summary>
         /// Runs <paramref name="validator"/> against <paramref name="instance"/> and converts the result
         /// to a <see cref="Result"/>. Named <c>ValidateToResult</c> rather than <c>Validate</c> so it
-        /// doesn't shadow <see cref="IValidator{T}.Validate(ValidationContext{T})"/>'s own overloads
-        /// (an extension method never wins overload resolution against an instance method of the same
-        /// name, so a same-named extension would silently never be called).
+        /// doesn't shadow <see cref="IValidator{T}.Validate(T)"/>'s own overloads (an extension method
+        /// never wins overload resolution against an instance method of the same name, so a same-named
+        /// extension would silently never be called).
         /// </summary>
         public static Result ValidateToResult<T>(this IValidator<T> validator, T instance)
         {
@@ -44,15 +44,23 @@ namespace DuonDevKit.Validation
             return result.ToResult();
         }
 
-        /// <summary>Converts a FluentValidation <see cref="ValidationResult"/> into a <see cref="Result"/> — success if <see cref="ValidationResult.IsValid"/>, otherwise a failure joining every <see cref="ValidationFailure"/> into one message.</summary>
+        /// <summary>
+        /// Converts a FluentValidation <see cref="ValidationResult"/> into a <see cref="Result"/> — a
+        /// failure joining every <see cref="Severity.Error"/> <see cref="ValidationFailure"/> into one
+        /// message, or success if there are none. A rule marked <c>.WithSeverity(Severity.Warning)</c> or
+        /// <c>Severity.Info</c> makes FluentValidation report <see cref="ValidationResult.IsValid"/> as
+        /// <c>false</c>, but doesn't fail the <see cref="Result"/> here — those severities are meant to be
+        /// non-blocking.
+        /// </summary>
         public static Result ToResult(this ValidationResult validationResult)
         {
             ArgumentNullException.ThrowIfNull(validationResult);
 
-            if (validationResult.IsValid)
+            var blocking = validationResult.Errors.Where(e => e.Severity == Severity.Error).ToList();
+            if (blocking.Count == 0)
                 return Result.Success();
 
-            var message = string.Join("; ", validationResult.Errors.Select(e => $"{e.PropertyName}: {e.ErrorMessage}"));
+            var message = string.Join("; ", blocking.Select(e => $"{e.PropertyName}: {e.ErrorMessage}"));
             return Error.Validation(ErrorCodes.ValidationFailed, message);
         }
     }

@@ -27,6 +27,11 @@ namespace DuonDevKit.Core.Results
         /// <summary>Creates a page of results.</summary>
         public PagedResult(IReadOnlyList<T> items, int pageNumber, int pageSize, int totalCount)
         {
+            ArgumentNullException.ThrowIfNull(items);
+            ArgumentOutOfRangeException.ThrowIfLessThan(pageNumber, 1);
+            ArgumentOutOfRangeException.ThrowIfLessThan(pageSize, 1);
+            ArgumentOutOfRangeException.ThrowIfNegative(totalCount);
+
             Items = items;
             PageNumber = pageNumber;
             PageSize = pageSize;

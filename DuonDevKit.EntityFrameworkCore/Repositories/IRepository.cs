@@ -22,21 +22,23 @@ namespace DuonDevKit.EntityFrameworkCore.Repositories
         /// Finds the first entity matching <paramref name="predicate"/>, or <see cref="Option{T}.None"/> if
         /// none does — unlike <see cref="GetByIdAsync"/>, "not found" isn't a failure here, just an absent
         /// value. Pass <paramref name="include"/> (e.g. <c>q =&gt; q.Include(x =&gt; x.Customer)</c>) to eager-load
-        /// navigation properties.
+        /// navigation properties, or <paramref name="asNoTracking"/> for a read-only lookup you won't <c>Update</c>.
         /// </summary>
         Task<Option<T>> FindOneAsync(
             Expression<Func<T, bool>> predicate,
             Func<IQueryable<T>, IQueryable<T>>? include = null,
+            bool asNoTracking = false,
             CancellationToken ct = default);
 
         /// <summary>
         /// Lists entities matching <paramref name="filter"/>, or all entities when <paramref name="filter"/>
         /// is <c>null</c>. Pass <paramref name="include"/> (e.g. <c>q =&gt; q.Include(x =&gt; x.Customer)</c>) to
-        /// eager-load navigation properties.
+        /// eager-load navigation properties, or <paramref name="asNoTracking"/> for a read-only list you won't <c>Update</c>.
         /// </summary>
         Task<Result<IReadOnlyList<T>>> ListAsync(
             Expression<Func<T, bool>>? filter = null,
             Func<IQueryable<T>, IQueryable<T>>? include = null,
+            bool asNoTracking = false,
             CancellationToken ct = default);
 
         /// <summary>
@@ -45,7 +47,8 @@ namespace DuonDevKit.EntityFrameworkCore.Repositories
         /// <c>Error.Validation</c> if <paramref name="pageNumber"/> or <paramref name="pageSize"/> is not
         /// positive. Pass <paramref name="orderBy"/> (e.g. <c>q =&gt; q.OrderBy(x =&gt; x.CreatedAt)</c>) for a
         /// stable page order — without it, page contents are not guaranteed to be consistent across calls.
-        /// Pass <paramref name="include"/> to eager-load navigation properties.
+        /// Pass <paramref name="include"/> to eager-load navigation properties, or <paramref name="asNoTracking"/>
+        /// for a read-only page you won't <c>Update</c>.
         /// </summary>
         Task<Result<PagedResult<T>>> ListPagedAsync(
             int pageNumber,
@@ -53,6 +56,7 @@ namespace DuonDevKit.EntityFrameworkCore.Repositories
             Expression<Func<T, bool>>? filter = null,
             Func<IQueryable<T>, IOrderedQueryable<T>>? orderBy = null,
             Func<IQueryable<T>, IQueryable<T>>? include = null,
+            bool asNoTracking = false,
             CancellationToken ct = default);
 
         /// <summary>Begins tracking <paramref name="entity"/> as a new row. Not yet persisted until <c>IUnitOfWork.SaveChangesAsync</c> is called.</summary>

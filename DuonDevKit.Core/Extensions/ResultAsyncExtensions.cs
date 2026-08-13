@@ -19,6 +19,8 @@ namespace DuonDevKit.Core.Extensions
         /// <summary>Awaits <paramref name="resultTask"/>, then transforms the value of a successful result using the async <paramref name="mapper"/>; propagates the error unchanged otherwise, without invoking <paramref name="mapper"/>.</summary>
         public static async Task<Result<TOut>> MapAsync<T, TOut>(this Task<Result<T>> resultTask, Func<T, Task<TOut>> mapper)
         {
+            ArgumentNullException.ThrowIfNull(mapper);
+
             var result = await resultTask;
             if (result.IsFailure)
                 return Result.Fail<TOut>(result.Error);
@@ -37,6 +39,8 @@ namespace DuonDevKit.Core.Extensions
         /// <summary>Awaits <paramref name="resultTask"/>, then chains another async result-returning operation using <paramref name="binder"/> when successful; propagates the error unchanged otherwise, without invoking <paramref name="binder"/> or double-wrapping its result.</summary>
         public static async Task<Result<TOut>> BindAsync<T, TOut>(this Task<Result<T>> resultTask, Func<T, Task<Result<TOut>>> binder)
         {
+            ArgumentNullException.ThrowIfNull(binder);
+
             var result = await resultTask;
             if (result.IsFailure)
                 return Result.Fail<TOut>(result.Error);
@@ -54,6 +58,9 @@ namespace DuonDevKit.Core.Extensions
         /// <summary>Awaits <paramref name="resultTask"/>, then converts a successful result into a failure carrying <paramref name="error"/> when the async <paramref name="predicate"/> returns <c>false</c>; propagates the error unchanged on an already-failed result, without invoking <paramref name="predicate"/>.</summary>
         public static async Task<Result<T>> EnsureAsync<T>(this Task<Result<T>> resultTask, Func<T, Task<bool>> predicate, Error error)
         {
+            ArgumentNullException.ThrowIfNull(predicate);
+            ArgumentNullException.ThrowIfNull(error);
+
             var result = await resultTask;
             if (result.IsFailure) return result;
 

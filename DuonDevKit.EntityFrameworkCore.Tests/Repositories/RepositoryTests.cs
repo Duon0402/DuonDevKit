@@ -397,6 +397,60 @@ namespace DuonDevKit.EntityFrameworkCore.Tests.Repositories
         }
 
         [Fact]
+        public async Task FindOneAsync_AsNoTracking_ChangesDoNotPersistOnSave()
+        {
+            var databaseName = Guid.NewGuid().ToString();
+            using var context = CreateContext(databaseName);
+            var entity = new TestEntity { Name = "A" };
+            context.TestEntities.Add(entity);
+            await context.SaveChangesAsync();
+            var repository = new Repository<TestEntity>(context);
+
+            var option = await repository.FindOneAsync(e => e.Id == entity.Id, asNoTracking: true);
+            option.Value.Name = "Changed";
+            await context.SaveChangesAsync();
+
+            using var verifyContext = CreateContext(databaseName);
+            Assert.Equal("A", (await verifyContext.TestEntities.FindAsync(entity.Id))!.Name);
+        }
+
+        [Fact]
+        public async Task ListAsync_AsNoTracking_ChangesDoNotPersistOnSave()
+        {
+            var databaseName = Guid.NewGuid().ToString();
+            using var context = CreateContext(databaseName);
+            var entity = new TestEntity { Name = "A" };
+            context.TestEntities.Add(entity);
+            await context.SaveChangesAsync();
+            var repository = new Repository<TestEntity>(context);
+
+            var result = await repository.ListAsync(asNoTracking: true);
+            result.Value[0].Name = "Changed";
+            await context.SaveChangesAsync();
+
+            using var verifyContext = CreateContext(databaseName);
+            Assert.Equal("A", (await verifyContext.TestEntities.FindAsync(entity.Id))!.Name);
+        }
+
+        [Fact]
+        public async Task ListPagedAsync_AsNoTracking_ChangesDoNotPersistOnSave()
+        {
+            var databaseName = Guid.NewGuid().ToString();
+            using var context = CreateContext(databaseName);
+            var entity = new TestEntity { Name = "A" };
+            context.TestEntities.Add(entity);
+            await context.SaveChangesAsync();
+            var repository = new Repository<TestEntity>(context);
+
+            var result = await repository.ListPagedAsync(pageNumber: 1, pageSize: 10, asNoTracking: true);
+            result.Value.Items[0].Name = "Changed";
+            await context.SaveChangesAsync();
+
+            using var verifyContext = CreateContext(databaseName);
+            Assert.Equal("A", (await verifyContext.TestEntities.FindAsync(entity.Id))!.Name);
+        }
+
+        [Fact]
         public async Task FindOneAsync_WithInclude_EagerLoadsNavigationProperty()
         {
             using var context = CreateContext();

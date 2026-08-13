@@ -34,7 +34,7 @@ namespace DuonDevKit.Core.Results
             }
         }
 
-        internal Result(bool isSuccess, Error error, T? value)
+        private Result(bool isSuccess, Error error, T? value)
         {
             if (isSuccess && error != Error.None)
                 throw new ArgumentException("A successful result cannot contain an error.", nameof(error));

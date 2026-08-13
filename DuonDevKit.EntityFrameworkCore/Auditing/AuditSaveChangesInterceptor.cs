@@ -47,6 +47,12 @@ namespace DuonDevKit.EntityFrameworkCore.Auditing
                     if (creatable.CreatedBy is null) creatable.CreatedBy = userId;
                 }
 
+                if (entry.State == EntityState.Modified && entry.Entity is ICanCreate creatableOnUpdate)
+                {
+                    entry.Property(nameof(ICanCreate.CreatedAt)).IsModified = false;
+                    entry.Property(nameof(ICanCreate.CreatedBy)).IsModified = false;
+                }
+
                 if (entry.State == EntityState.Modified && entry.Entity is ICanUpdate updatable)
                 {
                     var updatedAtProperty = entry.Property(nameof(ICanUpdate.UpdatedAt));
@@ -58,7 +64,7 @@ namespace DuonDevKit.EntityFrameworkCore.Auditing
                         updatable.UpdatedBy = userId;
                 }
 
-                if (entry.State == EntityState.Modified && entry.Entity is ISoftDelete softDeletable && softDeletable.IsDeleted)
+                if (entry.State is EntityState.Modified or EntityState.Added && entry.Entity is ISoftDelete softDeletable && softDeletable.IsDeleted)
                 {
                     if (softDeletable.DeletedAt is null) softDeletable.DeletedAt = now;
                     if (softDeletable.DeletedBy is null) softDeletable.DeletedBy = userId;

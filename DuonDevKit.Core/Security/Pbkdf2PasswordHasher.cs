@@ -14,6 +14,9 @@ namespace DuonDevKit.Core.Security
         private const int SaltSize = 16;
         private const int HashSize = 32;
 
+        /// <summary>Upper bound on the iteration count read back from a stored hash string, so a corrupted/tampered value can't force a multi-minute PBKDF2 run.</summary>
+        private const int MaxIterations = 2_000_000;
+
         /// <inheritdoc />
         public string Hash(string password)
         {
@@ -26,11 +29,13 @@ namespace DuonDevKit.Core.Security
         /// <inheritdoc />
         public bool Verify(string password, string hashedPassword)
         {
+            ArgumentNullException.ThrowIfNull(password);
+
             if (string.IsNullOrEmpty(hashedPassword))
                 return false;
 
             var parts = hashedPassword.Split('.');
-            if (parts.Length != 3 || !int.TryParse(parts[0], out var storedIterations) || storedIterations <= 0)
+            if (parts.Length != 3 || !int.TryParse(parts[0], out var storedIterations) || storedIterations is <= 0 or > MaxIterations)
                 return false;
 
             byte[] salt, expectedHash;

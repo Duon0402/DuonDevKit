@@ -223,6 +223,33 @@ namespace DuonDevKit.Core.Tests.Extensions
         }
 
         [Fact]
+        public async Task MapAsync_AsyncMapper_NullMapper_ThrowsEvenOnAlreadyFailedResult()
+        {
+            var resultTask = Task.FromResult(Result.Fail<int>(Error.NotFound("NF001", "Not found.")));
+
+            await Assert.ThrowsAsync<ArgumentNullException>(
+                () => resultTask.MapAsync((Func<int, Task<string>>)null!));
+        }
+
+        [Fact]
+        public async Task BindAsync_AsyncBinder_NullBinder_ThrowsEvenOnAlreadyFailedResult()
+        {
+            var resultTask = Task.FromResult(Result.Fail<int>(Error.NotFound("NF001", "Not found.")));
+
+            await Assert.ThrowsAsync<ArgumentNullException>(
+                () => resultTask.BindAsync((Func<int, Task<Result<string>>>)null!));
+        }
+
+        [Fact]
+        public async Task EnsureAsync_AsyncPredicate_NullError_ThrowsEvenOnAlreadyFailedResult()
+        {
+            var resultTask = Task.FromResult(Result.Fail<int>(Error.NotFound("NF001", "Not found.")));
+
+            await Assert.ThrowsAsync<ArgumentNullException>(
+                () => resultTask.EnsureAsync(v => Task.FromResult(true), null!));
+        }
+
+        [Fact]
         public async Task EnsureAsync_AsyncPredicate_OnFailure_DoesNotInvokePredicate_PropagatesOriginalError()
         {
             var originalError = Error.NotFound("NF001", "Not found.");

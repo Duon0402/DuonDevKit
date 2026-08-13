@@ -19,11 +19,15 @@ namespace DuonDevKit.Jwt.DependencyInjection
         /// registered before or after this call), and the <see cref="JwtBearerDefaults.AuthenticationScheme"/>
         /// authentication handler validating tokens against the same <paramref name="settings"/>.
         /// </summary>
+        /// <remarks>
+        /// Validation uses <c>ClockSkew = TimeSpan.Zero</c> — stricter than the JWT library's own 5-minute
+        /// default — so a token is rejected the instant it expires. If the issuing and validating instances'
+        /// clocks aren't tightly synced (e.g. containers without NTP), tokens near <see cref="JwtSettings.AccessTokenLifetime"/>
+        /// can be rejected slightly early.
+        /// </remarks>
         public static IServiceCollection AddDuonDevKitJwt(this IServiceCollection services, JwtSettings settings)
         {
-            var keyLength = Encoding.UTF8.GetByteCount(settings.SigningKey);
-            if (keyLength < 32)
-                throw new ArgumentException($"JwtSettings.SigningKey must be at least 32 bytes (256 bits) of entropy for HMAC-SHA256; got {keyLength} bytes.", nameof(settings));
+            ArgumentNullException.ThrowIfNull(settings);
 
             services.AddSingleton(settings);
             services.AddHttpContextAccessor();
@@ -46,6 +50,7 @@ namespace DuonDevKit.Jwt.DependencyInjection
                         ValidAudience = settings.Audience,
                         ValidateIssuerSigningKey = true,
                         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(settings.SigningKey)),
+                        ValidAlgorithms = [SecurityAlgorithms.HmacSha256],
                         ValidateLifetime = true,
                         ClockSkew = TimeSpan.Zero,
                     };

@@ -19,7 +19,7 @@ using DuonDevKit.AspNetCore;
 public async Task<IActionResult> GetById(string id)
 {
     Result<Order> result = await repository.GetByIdAsync([id]);
-    return result.ToActionResult();
+    return result.ToActionResult(HttpContext);
 }
 
 app.MapGet("/orders/{id}", async (string id, IRepository<Order> repository) =>
@@ -30,6 +30,8 @@ app.MapGet("/orders/{id}", async (string id, IRepository<Order> repository) =>
 ```
 
 A successful `Result<T>` maps to `200 OK` with its value; a successful non-generic `Result` maps to `204 No Content`. Failures map to `ProblemDetails`, using `Error.ToHttpStatusCode()`, with the error code exposed as the `errorCode` extension.
+
+Pass `HttpContext` to `ToActionResult()` (as above) so any `ProblemDetailsOptions.CustomizeProblemDetails` you registered via `AddProblemDetails()` applies to MVC responses the same way it already does for `ToApiResult()`. Omit it and the response still works, just without that customization.
 
 ## Unhandled exceptions
 
@@ -65,7 +67,7 @@ app.MapPost("/orders", (CreateOrderRequest request) => Results.Ok())
 ```
 
 An invalid request never reaches the handler; the response body is a standard
-`{ "errors": { "Quantity": ["..."] }, "errorCode": "VALIDATION_FAILED" }` shape. For rules that need to
+`{ "errors": { "Quantity": ["..."] }, "errorCode": "VALIDATION001" }` shape. For rules that need to
 be conditional, compare properties against each other, or call out to a database/service, use
 `DuonDevKit.Validation`'s FluentValidation integration directly in the handler instead — it composes
 with the same `Result`-to-HTTP mapping shown above.

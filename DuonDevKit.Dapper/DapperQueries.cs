@@ -1,5 +1,7 @@
+using System.Collections.Concurrent;
 using System.Data;
 using System.Data.Common;
+using System.Reflection;
 using Dapper;
 using DuonDevKit.Core.Errors;
 using DuonDevKit.Core.Options;
@@ -12,45 +14,61 @@ namespace DuonDevKit.Dapper
     /// <summary>Default <see cref="IDapperQueries"/> implementation, sharing <paramref name="context"/>'s connection/transaction.</summary>
     public sealed class DapperQueries(DbContext context) : IDapperQueries
     {
+        private static readonly MethodInfo QueryFirstOrDefaultAsNullableDefinition = typeof(DapperQueries)
+            .GetMethod(nameof(QueryFirstOrDefaultAsNullableAsync), BindingFlags.NonPublic | BindingFlags.Instance)!;
+
+        private static readonly ConcurrentDictionary<Type, MethodInfo> QueryFirstOrDefaultAsNullableCache = new();
+
         /// <inheritdoc />
-        public async Task<Result<IReadOnlyList<T>>> QueryAsync<T>(string sql, object? parameters = null, CancellationToken ct = default)
-        {
-            try
+        public Task<Result<IReadOnlyList<T>>> QueryAsync<T>(string sql, object? parameters = null, CancellationToken ct = default)
+            => TryRunAsync(async () =>
             {
                 var results = await RunAsync((connection, command) => connection.QueryAsync<T>(command), sql, parameters, ct);
-                return Result.Success<IReadOnlyList<T>>(results.AsList());
-            }
-            catch (DbException ex)
-            {
-                return Result.Fail<IReadOnlyList<T>>(Error.Unexpected(ErrorCodes.QueryFailed, ex.Message));
-            }
-        }
+                return (IReadOnlyList<T>)results.AsList();
+            });
 
         /// <inheritdoc />
-        public async Task<Result<Option<T>>> QueryFirstOrDefaultAsync<T>(string sql, object? parameters = null, CancellationToken ct = default)
+        public Task<Result<Option<T>>> QueryFirstOrDefaultAsync<T>(string sql, object? parameters = null, CancellationToken ct = default)
         {
-            try
+            // Non-nullable value types need the Nullable<T> detour below to tell "no rows" apart from a row whose value is default(T).
+            if (typeof(T).IsValueType && Nullable.GetUnderlyingType(typeof(T)) is null)
+            {
+                var method = QueryFirstOrDefaultAsNullableCache.GetOrAdd(typeof(T), t => QueryFirstOrDefaultAsNullableDefinition.MakeGenericMethod(t));
+                return (Task<Result<Option<T>>>)method.Invoke(this, [sql, parameters, ct])!;
+            }
+
+            return QueryFirstOrDefaultReferenceOrNullableAsync<T>(sql, parameters, ct);
+        }
+
+        private Task<Result<Option<T>>> QueryFirstOrDefaultReferenceOrNullableAsync<T>(string sql, object? parameters, CancellationToken ct)
+            => TryRunAsync(async () =>
             {
                 var result = await RunAsync((connection, command) => connection.QueryFirstOrDefaultAsync<T>(command), sql, parameters, ct);
-                return Result.Success(result is null ? Option<T>.None : Option<T>.Some(result));
-            }
-            catch (DbException ex)
+                return result is null ? Option<T>.None : Option<T>.Some(result);
+            });
+
+        private Task<Result<Option<TStruct>>> QueryFirstOrDefaultAsNullableAsync<TStruct>(string sql, object? parameters, CancellationToken ct)
+            where TStruct : struct
+            => TryRunAsync(async () =>
             {
-                return Result.Fail<Option<T>>(Error.Unexpected(ErrorCodes.QueryFailed, ex.Message));
-            }
-        }
+                var result = await RunAsync((connection, command) => connection.QueryFirstOrDefaultAsync<TStruct?>(command), sql, parameters, ct);
+                return result.HasValue ? Option<TStruct>.Some(result.Value) : Option<TStruct>.None;
+            });
 
         /// <inheritdoc />
-        public async Task<Result<int>> ExecuteAsync(string sql, object? parameters = null, CancellationToken ct = default)
+        public Task<Result<int>> ExecuteAsync(string sql, object? parameters = null, CancellationToken ct = default)
+            => TryRunAsync(() => RunAsync((connection, command) => connection.ExecuteAsync(command), sql, parameters, ct));
+
+        /// <summary>Runs <paramref name="operation"/>, converting a thrown <see cref="DbException"/> into a failed <see cref="Result{T}"/> instead of letting it propagate.</summary>
+        private static async Task<Result<TResult>> TryRunAsync<TResult>(Func<Task<TResult>> operation)
         {
             try
             {
-                var rowsAffected = await RunAsync((connection, command) => connection.ExecuteAsync(command), sql, parameters, ct);
-                return Result.Success(rowsAffected);
+                return Result.Success(await operation());
             }
             catch (DbException ex)
             {
-                return Result.Fail<int>(Error.Unexpected(ErrorCodes.QueryFailed, ex.Message));
+                return Result.Fail<TResult>(Error.Unexpected(ErrorCodes.QueryFailed, ex.Message));
             }
         }
 

@@ -46,7 +46,7 @@ namespace DuonDevKit.AspNetCore.Validation
             return TypedResults.ValidationProblem(
                 errors,
                 title: "Validation",
-                extensions: new Dictionary<string, object?> { ["errorCode"] = ErrorCodes.ValidationFailed });
+                extensions: new Dictionary<string, object?> { [ResultExtensions.ErrorCodeExtensionKey] = ErrorCodes.ValidationFailed });
         }
     }
 }

@@ -52,6 +52,15 @@ namespace DuonDevKit.Validation.Tests
         }
 
         [Fact]
+        public void AddDuonDevKitValidators_OpenGenericValidatorType_IsSkippedNotRegistered()
+        {
+            var services = new ServiceCollection();
+            services.AddDuonDevKitValidators([typeof(GenericValidator<>)]);
+
+            Assert.DoesNotContain(services, d => d.ImplementationType == typeof(GenericValidator<>));
+        }
+
+        [Fact]
         public void AddDuonDevKitValidators_WholeAssemblyScan_RejectsTheDeliberateDuplicate()
         {
             var services = new ServiceCollection();

@@ -28,6 +28,17 @@ namespace DuonDevKit.Validation.Tests
         }
 
         [Fact]
+        public void Validate_OnlyWarningSeverityFailures_ReturnsSuccess()
+        {
+            var validator = new NoteValidator();
+            var note = new Note { Text = "Hi" };
+
+            var result = validator.ValidateToResult(note);
+
+            Assert.True(result.IsSuccess);
+        }
+
+        [Fact]
         public async Task ValidateAsync_InvalidInstance_ReturnsFailure()
         {
             var validator = new PersonValidator();

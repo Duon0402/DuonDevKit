@@ -59,3 +59,5 @@ Result<RefreshTokenRotationResult> rotated =
 ```
 
 `AddDuonDevKitJwt` configures JWT bearer authentication and registers `HttpContextCurrentUserProvider`. It replaces only the EntityFrameworkCore null-provider fallback, preserving an application-supplied `ICurrentUserProvider`; audit fields can therefore use the authenticated user's JWT claims.
+
+Token validation uses `ClockSkew = TimeSpan.Zero` (stricter than the JWT library's usual 5-minute default), so make sure the issuing and validating instances' clocks are kept in sync (NTP) — otherwise tokens near their expiry can be rejected slightly early.

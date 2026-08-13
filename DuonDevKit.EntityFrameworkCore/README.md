@@ -49,7 +49,7 @@ await repository.AddAsync(order);
 Result saved = await unitOfWork.SaveChangesAsync();
 ```
 
-Use `Query(asNoTracking: true)` for projections and other fully custom EF queries. `ListPagedAsync` returns a `PagedResult<T>` with items, count, and page metadata.
+`FindOneAsync`/`ListAsync`/`ListPagedAsync` all take an `asNoTracking` parameter for read-only reads you won't `Update`. Use `Query(asNoTracking: true)` for projections and other fully custom EF queries. `ListPagedAsync` returns a `PagedResult<T>` with items, count, and page metadata.
 
 ## Transactions
 

@@ -69,6 +69,23 @@ namespace DuonDevKit.Core.Tests.Security
         }
 
         [Fact]
+        public void Verify_IterationCountAboveMax_ReturnsFalseInsteadOfRunning()
+        {
+            var hasher = new Pbkdf2PasswordHasher();
+
+            Assert.False(hasher.Verify("anything", "2000000001.c29tZXNhbHQ=.c29tZWhhc2g="));
+        }
+
+        [Fact]
+        public void Verify_NullPassword_ThrowsInsteadOfSwallowing()
+        {
+            var hasher = new Pbkdf2PasswordHasher();
+            var hash = hasher.Hash("some-password");
+
+            Assert.Throws<ArgumentNullException>(() => hasher.Verify(null!, hash));
+        }
+
+        [Fact]
         public void Verify_HashProducedWithDifferentIterationCount_StillVerifies()
         {
             var oldHasher = new Pbkdf2PasswordHasher(iterations: 1000);

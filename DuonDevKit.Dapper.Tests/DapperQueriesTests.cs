@@ -4,6 +4,7 @@ namespace DuonDevKit.Dapper.Tests
 {
     public class DapperQueriesTests
     {
+
         [Fact]
         public async Task QueryAsync_MatchingRows_ReturnsThem()
         {
@@ -43,6 +44,34 @@ namespace DuonDevKit.Dapper.Tests
 
             Assert.True(result.IsSuccess);
             Assert.False(result.Value.HasValue);
+        }
+
+        [Fact]
+        public async Task QueryFirstOrDefaultAsync_ValueTypeNoMatch_ReturnsNoneNotDefaultValue()
+        {
+            using var fixture = new SqliteFixture();
+            await fixture.Context.Database.ExecuteSqlRawAsync("CREATE TABLE Counters (Name TEXT NOT NULL, Value INTEGER NOT NULL)");
+            var queries = new DapperQueries(fixture.Context);
+
+            var result = await queries.QueryFirstOrDefaultAsync<int>("SELECT Value FROM Counters WHERE Name = @Name", new { Name = "Missing" });
+
+            Assert.True(result.IsSuccess);
+            Assert.False(result.Value.HasValue);
+        }
+
+        [Fact]
+        public async Task QueryFirstOrDefaultAsync_ValueTypeMatchingDefaultValue_ReturnsSomeDefault()
+        {
+            using var fixture = new SqliteFixture();
+            await fixture.Context.Database.ExecuteSqlRawAsync("CREATE TABLE Counters (Name TEXT NOT NULL, Value INTEGER NOT NULL)");
+            await fixture.Context.Database.ExecuteSqlRawAsync("INSERT INTO Counters (Name, Value) VALUES ('A', 0)");
+            var queries = new DapperQueries(fixture.Context);
+
+            var result = await queries.QueryFirstOrDefaultAsync<int>("SELECT Value FROM Counters WHERE Name = @Name", new { Name = "A" });
+
+            Assert.True(result.IsSuccess);
+            Assert.True(result.Value.HasValue);
+            Assert.Equal(0, result.Value.Value);
         }
 
         [Fact]

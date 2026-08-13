@@ -1,9 +1,9 @@
 ﻿namespace DuonDevKit.EntityFrameworkCore.Auditing
 {
     /// <summary>
-    /// Marks an entity as tracking who created it and when. When left at their default values,
-    /// <see cref="CreatedAt"/>/<see cref="CreatedBy"/> are auto-filled by
-    /// <see cref="AuditSaveChangesInterceptor"/> on the entity's first save.
+    /// Marks an entity as tracking who created it and when. <see cref="AuditSaveChangesInterceptor"/>
+    /// auto-fills <see cref="CreatedAt"/>/<see cref="CreatedBy"/> on creation, and protects them from
+    /// being overwritten on any later update (even a disconnected <c>DbSet.Update()</c>).
     /// </summary>
     public interface ICanCreate
     {

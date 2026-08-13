@@ -1,4 +1,3 @@
-using DuonDevKit.Core.Errors;
 using DuonDevKit.Core.Results;
 using Microsoft.EntityFrameworkCore;
 
@@ -12,9 +11,7 @@ namespace DuonDevKit.EntityFrameworkCore.Repositories
         public async Task<Result<T>> GetByIdAsync(TId id, CancellationToken ct = default)
         {
             var entity = await _context.Set<T>().FindAsync([id!], ct);
-            return entity is null
-                ? Result.Fail<T>(Error.NotFound(ErrorCodes.EntityNotFound, $"{typeof(T).Name} not found."))
-                : Result.Success(entity);
+            return ToFoundResult(entity);
         }
 
         /// <inheritdoc />

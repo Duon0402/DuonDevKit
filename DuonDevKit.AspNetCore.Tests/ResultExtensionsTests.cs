@@ -3,6 +3,7 @@ using DuonDevKit.Core.Results;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace DuonDevKit.AspNetCore.Tests
 {
@@ -40,7 +41,7 @@ namespace DuonDevKit.AspNetCore.Tests
 
             Assert.Equal(404, actionResult.StatusCode);
             Assert.Equal(404, problem.Status);
-            Assert.Equal("NotFound", problem.Title);
+            Assert.Equal("Not Found", problem.Title);
             Assert.Equal("User not found.", problem.Detail);
             Assert.Equal("USER001", problem.Extensions["errorCode"]);
         }
@@ -59,6 +60,25 @@ namespace DuonDevKit.AspNetCore.Tests
 
             Assert.Equal("An unexpected error occurred.", problem.Detail);
             Assert.Equal("SYS001", problem.Extensions["errorCode"]);
+        }
+
+        [Fact]
+        public void ToActionResult_WithHttpContext_AppliesHostCustomizeProblemDetails()
+        {
+            var services = new ServiceCollection();
+            services.AddLogging();
+            services.AddControllers();
+            services.AddProblemDetails(options =>
+                options.CustomizeProblemDetails = ctx => ctx.ProblemDetails.Extensions["traceId"] = "trace-123");
+            using var provider = services.BuildServiceProvider();
+            var httpContext = new DefaultHttpContext { RequestServices = provider };
+
+            var error = Error.NotFound("USER001", "User not found.");
+            var actionResult = Assert.IsType<ObjectResult>(Result.Fail(error).ToActionResult(httpContext));
+            var problem = Assert.IsType<ProblemDetails>(actionResult.Value);
+
+            Assert.Equal("trace-123", problem.Extensions["traceId"]);
+            Assert.Equal("USER001", problem.Extensions["errorCode"]);
         }
 
         [Fact]

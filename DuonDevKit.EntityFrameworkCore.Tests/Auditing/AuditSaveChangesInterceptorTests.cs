@@ -170,6 +170,48 @@ namespace DuonDevKit.EntityFrameworkCore.Tests.Auditing
         }
 
         [Fact]
+        public async Task UpdatingViaContextUpdate_DisconnectedEntityMissingCreatedFields_DoesNotOverwriteThem()
+        {
+            var user = new StubCurrentUserProvider { UserId = "alice" };
+            var databaseName = Guid.NewGuid().ToString();
+            var originalCreatedAt = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            int id;
+            using (var context = CreateContext(user, databaseName))
+            {
+                var entity = new TestEntity { Name = "A", CreatedAt = originalCreatedAt, CreatedBy = "alice" };
+                context.TestEntities.Add(entity);
+                await context.SaveChangesAsync();
+                id = entity.Id;
+            }
+
+            // Simulates a partial DTO round-trip that never carried CreatedAt/CreatedBy.
+            using var updateContext = CreateContext(user, databaseName);
+            var detached = new TestEntity { Id = id, Name = "A-changed" };
+            updateContext.TestEntities.Update(detached);
+            await updateContext.SaveChangesAsync();
+
+            using var verifyContext = CreateContext(user, databaseName);
+            var reloaded = await verifyContext.TestEntities.FindAsync(id);
+            Assert.NotNull(reloaded);
+            Assert.Equal(originalCreatedAt, reloaded!.CreatedAt);
+            Assert.Equal("alice", reloaded.CreatedBy);
+        }
+
+        [Fact]
+        public async Task AddingThenSoftDeletingEntity_InSameUnitOfWork_FillsDeletedAtAndDeletedBy()
+        {
+            var user = new StubCurrentUserProvider { UserId = "alice" };
+            using var context = CreateContext(user);
+            var entity = new TestEntity { Name = "A", IsDeleted = true };
+
+            context.TestEntities.Add(entity);
+            await context.SaveChangesAsync();
+
+            Assert.NotNull(entity.DeletedAt);
+            Assert.Equal("alice", entity.DeletedBy);
+        }
+
+        [Fact]
         public async Task AddingPlainEntity_WithNoAuditInterfaces_DoesNotThrow()
         {
             var user = new StubCurrentUserProvider { UserId = "alice" };

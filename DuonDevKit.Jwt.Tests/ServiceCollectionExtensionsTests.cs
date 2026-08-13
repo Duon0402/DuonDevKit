@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
 
 namespace DuonDevKit.Jwt.Tests
 {
@@ -72,17 +73,14 @@ namespace DuonDevKit.Jwt.Tests
         }
 
         [Fact]
-        public void AddDuonDevKitJwt_SigningKeyShorterThan32Bytes_Throws()
+        public void JwtSettings_SigningKeyShorterThan32Bytes_ThrowsOnConstruction()
         {
-            var services = new ServiceCollection();
-            var settings = new JwtSettings
+            Assert.Throws<ArgumentException>(() => new JwtSettings
             {
                 SigningKey = "too-short",
                 Issuer = "test-issuer",
                 Audience = "test-audience",
-            };
-
-            Assert.Throws<ArgumentException>(() => services.AddDuonDevKitJwt(settings));
+            });
         }
 
         [Fact]
@@ -95,6 +93,7 @@ namespace DuonDevKit.Jwt.Tests
 
             Assert.Equal("test-issuer", options.TokenValidationParameters.ValidIssuer);
             Assert.Equal("test-audience", options.TokenValidationParameters.ValidAudience);
+            Assert.Equal([SecurityAlgorithms.HmacSha256], options.TokenValidationParameters.ValidAlgorithms);
         }
     }
 }
