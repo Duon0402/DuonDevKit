@@ -503,5 +503,123 @@ namespace DuonDevKit.EntityFrameworkCore.Tests.Repositories
             Assert.True(result.IsSuccess);
             Assert.Single(result.Value.Items[0].Comments);
         }
+
+        [Fact]
+        public async Task FindOneAsync_WithSpecification_MatchingEntity_ReturnsSome()
+        {
+            using var context = CreateContext();
+            context.TestEntities.Add(new TestEntity { Name = "A" });
+            await context.SaveChangesAsync();
+            var repository = new Repository<TestEntity>(context);
+
+            var option = await repository.FindOneAsync(new TestEntityByNameSpec("A"));
+
+            Assert.True(option.HasValue);
+            Assert.Equal("A", option.Value.Name);
+        }
+
+        [Fact]
+        public async Task FindOneAsync_WithSpecification_NoMatch_ReturnsNoneInsteadOfFailure()
+        {
+            using var context = CreateContext();
+            var repository = new Repository<TestEntity>(context);
+
+            var option = await repository.FindOneAsync(new TestEntityByNameSpec("Missing"));
+
+            Assert.False(option.HasValue);
+        }
+
+        [Fact]
+        public async Task ListAsync_WithSpecification_AppliesCriteriaAndOrdering()
+        {
+            using var context = CreateContext();
+            context.TestEntities.AddRange(new TestEntity { Name = "B" }, new TestEntity { Name = "A" }, new TestEntity { Name = "C" });
+            await context.SaveChangesAsync();
+            var repository = new Repository<TestEntity>(context);
+
+            var result = await repository.ListAsync(new AllTestEntitiesSpec());
+
+            Assert.True(result.IsSuccess);
+            Assert.Equal(3, result.Value.Count);
+        }
+
+        [Fact]
+        public async Task ListAsync_WithSpecification_AsNoTracking_ChangesDoNotPersistOnSave()
+        {
+            var databaseName = Guid.NewGuid().ToString();
+            using var context = CreateContext(databaseName);
+            var entity = new TestEntity { Name = "A" };
+            context.TestEntities.Add(entity);
+            await context.SaveChangesAsync();
+            var repository = new Repository<TestEntity>(context);
+
+            var result = await repository.ListAsync(new TestEntityByNameSpec("A"), asNoTracking: true);
+            result.Value[0].Name = "Changed";
+            await context.SaveChangesAsync();
+
+            using var verifyContext = CreateContext(databaseName);
+            Assert.Equal("A", (await verifyContext.TestEntities.FindAsync(entity.Id))!.Name);
+        }
+
+        [Fact]
+        public async Task ListPagedAsync_WithSpecification_PagesOverMatchingOnly()
+        {
+            using var context = CreateContext();
+            context.TestEntities.AddRange(
+                new TestEntity { Name = "Match" },
+                new TestEntity { Name = "Match" },
+                new TestEntity { Name = "Other" });
+            await context.SaveChangesAsync();
+            var repository = new Repository<TestEntity>(context);
+
+            var result = await repository.ListPagedAsync(new TestEntityByNameSpec("Match"), pageNumber: 1, pageSize: 10);
+
+            Assert.True(result.IsSuccess);
+            Assert.Equal(2, result.Value.TotalCount);
+            Assert.All(result.Value.Items, e => Assert.Equal("Match", e.Name));
+        }
+
+        [Fact]
+        public async Task ListPagedAsync_WithSpecification_InvalidPageNumberOrSize_ReturnsFailure()
+        {
+            using var context = CreateContext();
+            var repository = new Repository<TestEntity>(context);
+
+            var result = await repository.ListPagedAsync(new AllTestEntitiesSpec(), pageNumber: 0, pageSize: 10);
+
+            Assert.True(result.IsFailure);
+        }
+
+        [Fact]
+        public async Task FindOneAsync_WithSpecification_Include_EagerLoadsNavigationProperty()
+        {
+            using var context = CreateContext();
+            var post = new BlogPostEntity { Title = "Post A" };
+            post.Comments.Add(new CommentEntity { Text = "Nice!" });
+            context.BlogPosts.Add(post);
+            await context.SaveChangesAsync();
+            var repository = new Repository<BlogPostEntity>(context);
+
+            var option = await repository.FindOneAsync(new BlogPostsWithCommentsSpec());
+
+            Assert.True(option.HasValue);
+            Assert.Single(option.Value.Comments);
+        }
+
+        [Fact]
+        public async Task ListPagedAsync_WithSpecification_Include_EagerLoadsNavigationProperty()
+        {
+            using var context = CreateContext();
+            var post = new BlogPostEntity { Title = "Post A" };
+            post.Comments.Add(new CommentEntity { Text = "Nice!" });
+            context.BlogPosts.Add(post);
+            await context.SaveChangesAsync();
+            var repository = new Repository<BlogPostEntity>(context);
+
+            var result = await repository.ListPagedAsync(new BlogPostsWithCommentsSpec(), pageNumber: 1, pageSize: 10);
+
+            Assert.True(result.IsSuccess);
+            Assert.Single(result.Value.Items[0].Comments);
+        }
     }
 }

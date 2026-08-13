@@ -1,6 +1,7 @@
 using DuonDevKit.EntityFrameworkCore.Auditing;
 using DuonDevKit.EntityFrameworkCore.Extensions;
 using DuonDevKit.EntityFrameworkCore.Repositories;
+using DuonDevKit.EntityFrameworkCore.Specifications;
 using Microsoft.EntityFrameworkCore;
 
 namespace DuonDevKit.EntityFrameworkCore.Tests
@@ -91,6 +92,27 @@ namespace DuonDevKit.EntityFrameworkCore.Tests
         public int Id { get; set; }
         public int BlogPostEntityId { get; set; }
         public string Text { get; set; } = string.Empty;
+    }
+
+    /// <summary>Matches <see cref="TestEntity.Name"/> exactly, ordered by <see cref="TestEntity.Name"/>.</summary>
+    public class TestEntityByNameSpec : Specification<TestEntity>
+    {
+        public TestEntityByNameSpec(string name)
+        {
+            AddCriteria(e => e.Name == name);
+            ApplyOrderBy(q => q.OrderBy(e => e.Name));
+        }
+    }
+
+    /// <summary>No criteria/ordering — every <see cref="TestEntity"/>.</summary>
+    public class AllTestEntitiesSpec : Specification<TestEntity>
+    {
+    }
+
+    /// <summary>Eager-loads <see cref="BlogPostEntity.Comments"/>.</summary>
+    public class BlogPostsWithCommentsSpec : Specification<BlogPostEntity>
+    {
+        public BlogPostsWithCommentsSpec() => AddInclude(q => q.Include(p => p.Comments));
     }
 
     /// <summary>Minimal DbContext used across the test suite, backed by the EF Core InMemory provider.</summary>

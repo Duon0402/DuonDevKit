@@ -3,6 +3,7 @@ using DuonDevKit.Core.Guards;
 using DuonDevKit.Core.Options;
 using DuonDevKit.Core.Results;
 using DuonDevKit.EntityFrameworkCore.Auditing;
+using DuonDevKit.EntityFrameworkCore.Specifications;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
 using System.Linq.Expressions;
@@ -106,6 +107,70 @@ namespace DuonDevKit.EntityFrameworkCore.Repositories
             var items = await query.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToListAsync(ct);
 
             return Result.Success(new PagedResult<T>(items, pageNumber, pageSize, totalCount));
+        }
+
+        /// <inheritdoc />
+        public async Task<Option<T>> FindOneAsync(ISpecification<T> specification, bool asNoTracking = false, CancellationToken ct = default)
+        {
+            var query = ApplySpecification(Query(asNoTracking), specification);
+            var entity = await query.FirstOrDefaultAsync(ct);
+            return entity is null ? Option<T>.None : Option<T>.Some(entity);
+        }
+
+        /// <inheritdoc />
+        public async Task<Result<IReadOnlyList<T>>> ListAsync(ISpecification<T> specification, bool asNoTracking = false, CancellationToken ct = default)
+        {
+            var query = ApplySpecification(Query(asNoTracking), specification);
+            var entities = await query.ToListAsync(ct);
+            return Result.Success<IReadOnlyList<T>>(entities);
+        }
+
+        /// <inheritdoc />
+        public async Task<Result<PagedResult<T>>> ListPagedAsync(ISpecification<T> specification, int pageNumber, int pageSize, bool asNoTracking = false, CancellationToken ct = default)
+        {
+            ArgumentNullException.ThrowIfNull(specification);
+
+            var validation = Result.Combine(
+                Guard.Against.NegativeOrZero(pageNumber, nameof(pageNumber)),
+                Guard.Against.NegativeOrZero(pageSize, nameof(pageSize)));
+
+            if (validation.IsFailure)
+                return Result.Fail<PagedResult<T>>(validation.Error);
+
+            if (pageSize > MaxPageSize)
+                return Error.Validation(ErrorCodes.PageSizeTooLarge, $"{nameof(pageSize)} must not exceed {MaxPageSize}.");
+
+            var query = Query(asNoTracking);
+            if (specification.Criteria is not null)
+                query = query.Where(specification.Criteria);
+
+            var totalCount = await query.CountAsync(ct);
+
+            if (specification.OrderBy is not null)
+                query = specification.OrderBy(query);
+            foreach (var include in specification.Includes)
+                query = include(query);
+
+            var items = await query.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToListAsync(ct);
+
+            return Result.Success(new PagedResult<T>(items, pageNumber, pageSize, totalCount));
+        }
+
+        /// <summary>Applies <paramref name="specification"/>'s criteria, includes, and ordering to <paramref name="query"/>, in that order — shared by <see cref="FindOneAsync(ISpecification{T}, bool, CancellationToken)"/> and <see cref="ListAsync(ISpecification{T}, bool, CancellationToken)"/>.</summary>
+        private static IQueryable<T> ApplySpecification(IQueryable<T> query, ISpecification<T> specification)
+        {
+            ArgumentNullException.ThrowIfNull(specification);
+
+            if (specification.Criteria is not null)
+                query = query.Where(specification.Criteria);
+
+            foreach (var include in specification.Includes)
+                query = include(query);
+
+            if (specification.OrderBy is not null)
+                query = specification.OrderBy(query);
+
+            return query;
         }
 
         /// <inheritdoc />

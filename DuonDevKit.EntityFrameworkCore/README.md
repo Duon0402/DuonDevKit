@@ -51,6 +51,30 @@ Result saved = await unitOfWork.SaveChangesAsync();
 
 `FindOneAsync`/`ListAsync`/`ListPagedAsync` all take an `asNoTracking` parameter for read-only reads you won't `Update`. Use `Query(asNoTracking: true)` for projections and other fully custom EF queries. `ListPagedAsync` returns a `PagedResult<T>` with items, count, and page metadata.
 
+## Specifications
+
+For a query shape you reuse across call sites, name it as a `Specification<T>` instead of repeating the same `filter`/`include`/`orderBy` lambdas everywhere:
+
+```csharp
+using DuonDevKit.EntityFrameworkCore.Specifications;
+
+public class PendingOrdersSpec : Specification<Order>
+{
+    public PendingOrdersSpec()
+    {
+        AddCriteria(o => o.Status == "Pending");
+        AddInclude(q => q.Include(o => o.Customer));
+        ApplyOrderBy(q => q.OrderBy(o => o.CreatedAt));
+    }
+}
+
+Result<IReadOnlyList<Order>> pending = await repository.ListAsync(new PendingOrdersSpec());
+Result<PagedResult<Order>> page = await repository.ListPagedAsync(new PendingOrdersSpec(), pageNumber: 1, pageSize: 20);
+Option<Order> first = await repository.FindOneAsync(new PendingOrdersSpec());
+```
+
+These are additional overloads — `FindOneAsync`/`ListAsync`/`ListPagedAsync` still accept `filter`/`include`/`orderBy` directly for one-off queries.
+
 ## Transactions
 
 Prefer `ExecuteInTransactionAsync` for an operation and its save in one execution-strategy-aware transaction.

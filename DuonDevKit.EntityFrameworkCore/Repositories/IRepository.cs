@@ -1,6 +1,7 @@
 using System.Linq.Expressions;
 using DuonDevKit.Core.Options;
 using DuonDevKit.Core.Results;
+using DuonDevKit.EntityFrameworkCore.Specifications;
 
 namespace DuonDevKit.EntityFrameworkCore.Repositories
 {
@@ -58,6 +59,15 @@ namespace DuonDevKit.EntityFrameworkCore.Repositories
             Func<IQueryable<T>, IQueryable<T>>? include = null,
             bool asNoTracking = false,
             CancellationToken ct = default);
+
+        /// <summary>Specification-based equivalent of <see cref="FindOneAsync(Expression{Func{T, bool}}, Func{IQueryable{T}, IQueryable{T}}?, bool, CancellationToken)"/> — reuses <paramref name="specification"/>'s criteria/includes instead of repeating them at the call site.</summary>
+        Task<Option<T>> FindOneAsync(ISpecification<T> specification, bool asNoTracking = false, CancellationToken ct = default);
+
+        /// <summary>Specification-based equivalent of <see cref="ListAsync(Expression{Func{T, bool}}?, Func{IQueryable{T}, IQueryable{T}}?, bool, CancellationToken)"/>.</summary>
+        Task<Result<IReadOnlyList<T>>> ListAsync(ISpecification<T> specification, bool asNoTracking = false, CancellationToken ct = default);
+
+        /// <summary>Specification-based equivalent of <see cref="ListPagedAsync(int, int, Expression{Func{T, bool}}?, Func{IQueryable{T}, IOrderedQueryable{T}}?, Func{IQueryable{T}, IQueryable{T}}?, bool, CancellationToken)"/> — <paramref name="specification"/> supplies the filter/includes/ordering, <paramref name="pageNumber"/>/<paramref name="pageSize"/> the page.</summary>
+        Task<Result<PagedResult<T>>> ListPagedAsync(ISpecification<T> specification, int pageNumber, int pageSize, bool asNoTracking = false, CancellationToken ct = default);
 
         /// <summary>Begins tracking <paramref name="entity"/> as a new row. Not yet persisted until <c>IUnitOfWork.SaveChangesAsync</c> is called.</summary>
         Task<Result<T>> AddAsync(T entity, CancellationToken ct = default);
