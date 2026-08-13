@@ -9,7 +9,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.18" />
     <PackageReference Include="DuonDevKit.Core" Version="0.8.0" />
-    <PackageReference Include="DuonDevKit.EntityFrameworkCore" Version="0.6.0" />
+    <PackageReference Include="DuonDevKit.EntityFrameworkCore" Version="0.7.0" />
     <PackageReference Include="DuonDevKit.AspNetCore" Version="0.4.0" />
 <!--#if (dapper)
     <PackageReference Include="DuonDevKit.Dapper" Version="0.2.0" />
