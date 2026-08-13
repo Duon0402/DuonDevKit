@@ -8,7 +8,7 @@
 
   <PropertyGroup>
     <PackageId>DuonDevKit.Validation</PackageId>
-    <Version>0.1.0</Version>
+    <Version>0.2.0</Version>
     <Description>FluentValidation integration for DuonDevKit.Core's Result pattern — runs an IValidator&lt;T&gt; and returns a Result instead of a raw ValidationResult, plus assembly-scanning DI registration.</Description>
     <PackageTags>validation;fluentvalidation;result;railway-oriented-programming;dotnet</PackageTags>
     <IsPackable>true</IsPackable>
