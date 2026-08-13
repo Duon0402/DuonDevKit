@@ -12,6 +12,7 @@ DuonDevKit is a collection of lightweight .NET libraries (targeting `net8.0` and
 | `DuonDevKit.Dapper` | Executes Dapper SQL through an EF Core context connection and transaction. | [README](DuonDevKit.Dapper/README.md) |
 | `DuonDevKit.Jwt` | JWT access/refresh token support and audit-user integration. | [README](DuonDevKit.Jwt/README.md) |
 | `DuonDevKit.Validation` | FluentValidation integration for the Result pattern. | [README](DuonDevKit.Validation/README.md) |
+| `DuonDevKit.Templates` | `dotnet new` templates that scaffold a new project already wired to these packages. | [README](DuonDevKit.Templates/README.md) |
 
 ## Getting started
 
@@ -30,8 +31,15 @@ dotnet add package DuonDevKit.Validation
 
 Each package README includes its required registration and first-use example.
 
-For an end-to-end Minimal API using all five packages, see
-[samples/DuonDevKit.SampleApi](samples/DuonDevKit.SampleApi/README.md).
+To start a new project with everything already wired together instead of adding each package by
+hand, install the project template:
+
+```bash
+dotnet new install DuonDevKit.Templates
+dotnet new duondevkit-api -n MyApi --auth --dapper --validation
+```
+
+See [DuonDevKit.Templates](DuonDevKit.Templates/README.md) for what each flag adds.
 
 ```bash
 dotnet build DuonDevKit.slnx

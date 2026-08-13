@@ -1,0 +1,30 @@
+{
+  "$schema": "http://json.schemastore.org/template",
+  "author": "DuonDevKit",
+  "classifications": ["Web", "API", "DuonDevKit"],
+  "identity": "DuonDevKit.Templates.Api",
+  "name": "DuonDevKit Minimal API",
+  "shortName": "duondevkit-api",
+  "sourceName": "DuonDevKit.ApiTemplate",
+  "preferNameDirectory": true,
+  "symbols": {
+    "auth": {
+      "type": "parameter",
+      "datatype": "bool",
+      "defaultValue": "false",
+      "description": "Include DuonDevKit.Jwt access/refresh-token authentication."
+    },
+    "dapper": {
+      "type": "parameter",
+      "datatype": "bool",
+      "defaultValue": "false",
+      "description": "Include DuonDevKit.Dapper for raw SQL alongside EF Core."
+    },
+    "validation": {
+      "type": "parameter",
+      "datatype": "bool",
+      "defaultValue": "false",
+      "description": "Use DuonDevKit.Validation (FluentValidation) instead of DataAnnotations for request validation."
+    }
+  }
+}

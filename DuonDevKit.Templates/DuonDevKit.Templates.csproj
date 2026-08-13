@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <IncludeContentInPack>true</IncludeContentInPack>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <ContentTargetFolders>content</ContentTargetFolders>
+    <NoDefaultExcludes>true</NoDefaultExcludes>
+    <!-- NU5128: normal for a template package — it intentionally ships no lib/ assembly. -->
+    <NoWarn>$(NoWarn);NU5128</NoWarn>
+    <IsPackable>true</IsPackable>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <PackageType>Template</PackageType>
+    <PackageId>DuonDevKit.Templates</PackageId>
+    <Version>0.1.0</Version>
+    <Description>dotnet new templates that scaffold a Minimal API project wired to DuonDevKit's packages (Core, EntityFrameworkCore, AspNetCore), with optional Jwt/Dapper/Validation.</Description>
+    <PackageTags>dotnet-new;templates;duondevkit;minimal-api</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The template's own .cs/.csproj files are packed as content, never compiled into this project. -->
+    <Compile Remove="**\*.cs" />
+    <Content Include="templates\**\*" Exclude="templates\**\bin\**;templates\**\obj\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+</Project>
