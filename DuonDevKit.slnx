@@ -6,6 +6,7 @@
     <Project Path="DuonDevKit.Dapper/DuonDevKit.Dapper.csproj" />
     <Project Path="DuonDevKit.Jwt/DuonDevKit.Jwt.csproj" />
     <Project Path="DuonDevKit.Validation/DuonDevKit.Validation.csproj" />
+    <Project Path="DuonDevKit.Caching/DuonDevKit.Caching.csproj" />
   </Folder>
   <Folder Name="/templates/">
     <Project Path="DuonDevKit.Templates/DuonDevKit.Templates.csproj" />
@@ -17,5 +18,6 @@
     <Project Path="DuonDevKit.Dapper.Tests/DuonDevKit.Dapper.Tests.csproj" />
     <Project Path="DuonDevKit.Jwt.Tests/DuonDevKit.Jwt.Tests.csproj" />
     <Project Path="DuonDevKit.Validation.Tests/DuonDevKit.Validation.Tests.csproj" />
+    <Project Path="DuonDevKit.Caching.Tests/DuonDevKit.Caching.Tests.csproj" />
   </Folder>
 </Solution>
