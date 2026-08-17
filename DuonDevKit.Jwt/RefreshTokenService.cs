@@ -44,7 +44,10 @@ namespace DuonDevKit.Jwt
             // indefinitely against whichever child token is currently valid.
             if (current.IsRevoked)
             {
-                await RevokeFamilyAsync(current.FamilyId, ct);
+                var revokeResult = await RevokeFamilyAsync(current.FamilyId, ct);
+                if (revokeResult.IsFailure)
+                    return Result.Fail<RefreshTokenRotationResult>(revokeResult.Error);
+
                 return Error.Unauthorized(ErrorCodes.InvalidRefreshToken, "Refresh token is revoked or expired.");
             }
 
@@ -77,16 +80,27 @@ namespace DuonDevKit.Jwt
         }
 
         /// <summary>Revokes every not-yet-revoked token sharing <paramref name="familyId"/> — the containment action for a detected reuse attack.</summary>
-        private async Task RevokeFamilyAsync(string familyId, CancellationToken ct)
+        private async Task<Result> RevokeFamilyAsync(string familyId, CancellationToken ct)
         {
             var familyResult = await repository.ListAsync(rt => rt.FamilyId == familyId && !rt.IsRevoked, ct: ct);
-            if (familyResult.IsFailure || familyResult.Value.Count == 0)
-                return;
+            if (familyResult.IsFailure)
+                return Result.Fail(familyResult.Error);
 
+            // Saved one token at a time, rather than batched in a single SaveChangesAsync: IsRevoked is
+            // this entity's concurrency token, so a conflict on one sibling (meaning it was already
+            // revoked by a concurrent call) would otherwise abort the whole batch and leave every other
+            // still-valid sibling in the family un-revoked — defeating the cascade containment.
+            Error? failure = null;
             foreach (var token in familyResult.Value)
+            {
                 token.IsRevoked = true;
 
-            await unitOfWork.SaveChangesAsync(ct);
+                var saveResult = await unitOfWork.SaveChangesAsync(ct);
+                if (saveResult.IsFailure && saveResult.Error.Type != ErrorType.Conflict)
+                    failure ??= saveResult.Error;
+            }
+
+            return failure is { } error ? Result.Fail(error) : Result.Success();
         }
 
         /// <inheritdoc />
