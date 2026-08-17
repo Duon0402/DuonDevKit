@@ -27,6 +27,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Lets the test project deterministically drive HybridCache's stampede-join leader/joiner roles
+         directly (bypassing HybridCacheService's public surface) to regression-test race conditions. -->
+    <InternalsVisibleTo Include="DuonDevKit.Caching.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <None Include="README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
