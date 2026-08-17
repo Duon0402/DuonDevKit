@@ -23,6 +23,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Lets DuonDevKit.AspNetCore's ValidationFilter<T> reuse DataAnnotationsValidator's raw
+         Validator.TryValidateObject call instead of duplicating it, without exposing the raw
+         List<ValidationResult> shape as public API. -->
+    <InternalsVisibleTo Include="DuonDevKit.AspNetCore" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- Unconditional: the 9.x package ships a single net8.0 asset used by both our net8.0 and
          net9.0 builds (Microsoft.Extensions.DependencyInjection.Abstractions has native net8.0/net9.0
          assets too, but there's no need to split — one version keeps Dependabot bumps to one line
