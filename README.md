@@ -10,6 +10,7 @@ DuonDevKit is a collection of lightweight .NET libraries (targeting `net8.0` and
 | `DuonDevKit.EntityFrameworkCore` | Result-based Repository/UnitOfWork with auditing and soft deletion. | [README](DuonDevKit.EntityFrameworkCore/README.md) |
 | `DuonDevKit.AspNetCore` | Converts Results into MVC and Minimal API responses; automatic request validation. | [README](DuonDevKit.AspNetCore/README.md) |
 | `DuonDevKit.Dapper` | Executes Dapper SQL through an EF Core context connection and transaction. | [README](DuonDevKit.Dapper/README.md) |
+| `DuonDevKit.Caching` | Result-based cache abstraction, backed by HybridCache (memory-only, or memory+Redis when configured). | [README](DuonDevKit.Caching/README.md) |
 | `DuonDevKit.Jwt` | JWT access/refresh token support and audit-user integration. | [README](DuonDevKit.Jwt/README.md) |
 | `DuonDevKit.Validation` | FluentValidation integration for the Result pattern. | [README](DuonDevKit.Validation/README.md) |
 | `DuonDevKit.Templates` | `dotnet new` templates that scaffold a new project already wired to these packages. | [README](DuonDevKit.Templates/README.md) |
@@ -25,6 +26,7 @@ dotnet add package DuonDevKit.Core
 dotnet add package DuonDevKit.EntityFrameworkCore
 dotnet add package DuonDevKit.AspNetCore
 dotnet add package DuonDevKit.Dapper
+dotnet add package DuonDevKit.Caching
 dotnet add package DuonDevKit.Jwt
 dotnet add package DuonDevKit.Validation
 ```
