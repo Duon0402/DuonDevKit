@@ -72,9 +72,50 @@ namespace DuonDevKit.Caching
             }
         }
 
+        public async Task<Result<T>> GetOrCreateAsync<T>(string key, Func<CancellationToken, Task<Result<T>>> factory, TimeSpan? expiration = null, CancellationToken cancellationToken = default)
+        {
+            ArgumentNullException.ThrowIfNull(factory);
+
+            try
+            {
+                var options = expiration.HasValue ? new HybridCacheEntryOptions { Expiration = expiration } : null;
+                var value = await _hybridCache.GetOrCreateAsync<T>(
+                    key,
+                    async ct =>
+                    {
+                        var result = await factory(ct);
+                        if (result.IsFailure)
+                            throw new CacheFactoryFailedException(result.Error);
+
+                        return result.Value;
+                    },
+                    options,
+                    tags: null,
+                    cancellationToken: cancellationToken);
+
+                return Result.Success(value);
+            }
+            catch (CacheFactoryFailedException ex)
+            {
+                return Result.Fail<T>(ex.Error);
+            }
+            catch (Exception ex)
+            {
+                return Result.Fail<T>(Error.Unexpected(ErrorCodes.CacheUnavailable, ex.Message));
+            }
+        }
+
         /// <summary>Signals a genuine cache miss from <see cref="GetAsync{T}"/>'s synthetic factory, without creating an entry.</summary>
         private sealed class CacheMissException : Exception
         {
+        }
+
+        /// <summary>Carries a factory's <see cref="Result{T}"/> failure back out of <see cref="GetOrCreateAsync{T}"/> without letting <see cref="HybridCache"/> cache anything for that call.</summary>
+        private sealed class CacheFactoryFailedException : Exception
+        {
+            public Error Error { get; }
+
+            public CacheFactoryFailedException(Error error) => Error = error;
         }
     }
 }

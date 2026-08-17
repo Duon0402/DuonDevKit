@@ -18,5 +18,13 @@ namespace DuonDevKit.Caching
 
         /// <summary>Removes the entry for <paramref name="key"/> if present. Succeeds even when the key doesn't exist.</summary>
         Task<Result> RemoveAsync(string key, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Returns the cached value for <paramref name="key"/> if present; otherwise invokes
+        /// <paramref name="factory"/>, caches its value on success, and returns that. A
+        /// <see cref="Result{T}"/> failure returned by <paramref name="factory"/> is never cached —
+        /// every call re-invokes the factory until it succeeds.
+        /// </summary>
+        Task<Result<T>> GetOrCreateAsync<T>(string key, Func<CancellationToken, Task<Result<T>>> factory, TimeSpan? expiration = null, CancellationToken cancellationToken = default);
     }
 }

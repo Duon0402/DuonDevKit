@@ -1,3 +1,5 @@
+using DuonDevKit.Core.Errors;
+using DuonDevKit.Core.Results;
 using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -61,6 +63,55 @@ namespace DuonDevKit.Caching.Tests
             var result = await cache.RemoveAsync("missing");
 
             Assert.True(result.IsSuccess);
+        }
+
+        [Fact]
+        public async Task GetOrCreateAsync_Miss_InvokesFactoryOnceThenServesFromCache()
+        {
+            var cache = BuildCacheService();
+            var callCount = 0;
+
+            var first = await cache.GetOrCreateAsync("key", _ =>
+            {
+                callCount++;
+                return Task.FromResult(Result.Success("value"));
+            });
+            var second = await cache.GetOrCreateAsync("key", _ =>
+            {
+                callCount++;
+                return Task.FromResult(Result.Success("value"));
+            });
+
+            Assert.True(first.IsSuccess);
+            Assert.Equal("value", first.Value);
+            Assert.True(second.IsSuccess);
+            Assert.Equal("value", second.Value);
+            Assert.Equal(1, callCount);
+        }
+
+        [Fact]
+        public async Task GetOrCreateAsync_FactoryFails_DoesNotCacheAndReturnsFailure()
+        {
+            var cache = BuildCacheService();
+            var error = Error.Unexpected("TEST001", "boom");
+            var callCount = 0;
+
+            var first = await cache.GetOrCreateAsync<string>("key", _ =>
+            {
+                callCount++;
+                return Task.FromResult(Result.Fail<string>(error));
+            });
+            var second = await cache.GetOrCreateAsync<string>("key", _ =>
+            {
+                callCount++;
+                return Task.FromResult(Result.Fail<string>(error));
+            });
+
+            Assert.True(first.IsFailure);
+            Assert.Equal(error, first.Error);
+            Assert.True(second.IsFailure);
+            Assert.Equal(error, second.Error);
+            Assert.Equal(2, callCount); // re-invoked both times — a failure was never cached
         }
     }
 }
