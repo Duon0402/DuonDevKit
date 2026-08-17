@@ -40,6 +40,10 @@ namespace DuonDevKit.Dapper
             return QueryFirstOrDefaultReferenceOrNullableAsync<T>(sql, parameters, ct);
         }
 
+        // Dapper's QueryFirstOrDefaultAsync<T> returns default(T) (null) both for "no matching row" and for
+        // "row found, but the selected column is SQL NULL" — the two are indistinguishable here, and can't be
+        // told apart by returning Option<T>.Some(null) either, since Option<T>.Some rejects null (see its
+        // XML doc on IDapperQueries.QueryFirstOrDefaultAsync for the full explanation and workaround).
         private Task<Result<Option<T>>> QueryFirstOrDefaultReferenceOrNullableAsync<T>(string sql, object? parameters, CancellationToken ct)
             => TryRunAsync(async () =>
             {

@@ -20,7 +20,17 @@ namespace DuonDevKit.Dapper
         /// <summary>Runs <paramref name="sql"/> and maps every row to <typeparamref name="T"/>.</summary>
         Task<Result<IReadOnlyList<T>>> QueryAsync<T>(string sql, object? parameters = null, CancellationToken ct = default);
 
-        /// <summary>Runs <paramref name="sql"/> and maps the first row to <typeparamref name="T"/>, or <see cref="Option{T}.None"/> if it returns none — "no rows" isn't a failure here, just an absent value.</summary>
+        /// <summary>
+        /// Runs <paramref name="sql"/> and maps the first row to <typeparamref name="T"/>, or <see cref="Option{T}.None"/> if it returns none — "no rows" isn't a failure here, just an absent value.
+        /// <para>
+        /// For a scalar/single-column <typeparamref name="T"/> (e.g. <c>string</c>, <c>int?</c>): a row whose
+        /// selected column is itself SQL <c>NULL</c> also maps to <see cref="Option{T}.None"/>, indistinguishable
+        /// from "no matching row" — <see cref="Option{T}"/> treats <c>null</c> as equivalent to absence
+        /// everywhere in this library (see <see cref="Option{T}.Some"/>'s null guard), so this method can't
+        /// represent "row found, value is null" separately. If that distinction matters, select a non-nullable
+        /// existence marker (e.g. <c>SELECT 1</c>) alongside the value and query it separately.
+        /// </para>
+        /// </summary>
         Task<Result<Option<T>>> QueryFirstOrDefaultAsync<T>(string sql, object? parameters = null, CancellationToken ct = default);
 
         /// <summary>Runs <paramref name="sql"/> as a non-query command (e.g. <c>UPDATE</c>/<c>DELETE</c>) and returns the number of rows affected.</summary>
