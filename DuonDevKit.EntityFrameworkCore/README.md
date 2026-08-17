@@ -22,6 +22,8 @@ services.AddDuonDevKitEntityFrameworkCore<AppDbContext>();
 
 This registers `IUnitOfWork`, `IRepository<T>`, and `IRepository<T, TId>`. An app-provided `ICurrentUserProvider` is used for auditing; otherwise a null-provider fallback is registered.
 
+> ⚠️ `AddDuonDevKitAuditing` must be used with `AddDbContext`, not `AddDbContextPool`. Pooled contexts build their options once at pool creation, so the `ICurrentUserProvider` resolved here would be captured once and reused by every pooled instance for the app's lifetime — silently attributing every later `SaveChanges` to whichever user was current at startup.
+
 Configure your context's model once to enable soft-delete filtering:
 
 ```csharp
