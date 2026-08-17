@@ -116,46 +116,15 @@ namespace DuonDevKit.EntityFrameworkCore
         }
 
         /// <inheritdoc />
-        public Task<Result> ExecuteInTransactionAsync(Func<CancellationToken, Task<Result>> operation, CancellationToken ct = default)
+        public async Task<Result> ExecuteInTransactionAsync(Func<CancellationToken, Task<Result>> operation, CancellationToken ct = default)
         {
-            if (_currentTransaction is not null)
-                return Task.FromResult(Result.Fail(Error.Business(ErrorCodes.TransactionAlreadyActive, "A transaction is already active on this unit of work.")));
-
-            var strategy = _context.Database.CreateExecutionStrategy();
-
-            return strategy.ExecuteAsync(async () =>
+            var result = await ExecuteInTransactionAsync(async innerCt =>
             {
-                IDbContextTransaction transaction;
-                try
-                {
-                    transaction = await _context.Database.BeginTransactionAsync(ct);
-                }
-                catch (Exception ex)
-                {
-                    return Error.Unexpected(ErrorCodes.TransactionError, ex.Message);
-                }
+                var opResult = await operation(innerCt);
+                return opResult.IsFailure ? Result.Fail<Unit>(opResult.Error) : Result.Success(Unit.Value);
+            }, ct);
 
-                await using (transaction)
-                {
-                    var result = await operation(ct);
-                    if (result.IsFailure)
-                        return result;
-
-                    var saveResult = await SaveChangesAsync(ct);
-                    if (saveResult.IsFailure)
-                        return saveResult;
-
-                    try
-                    {
-                        await transaction.CommitAsync(ct);
-                        return Result.Success();
-                    }
-                    catch (Exception ex)
-                    {
-                        return Error.Unexpected(ErrorCodes.TransactionError, ex.Message);
-                    }
-                }
-            });
+            return result.IsFailure ? Result.Fail(result.Error) : Result.Success();
         }
 
         /// <inheritdoc />
@@ -166,7 +135,10 @@ namespace DuonDevKit.EntityFrameworkCore
 
             var strategy = _context.Database.CreateExecutionStrategy();
 
-            return strategy.ExecuteAsync(async () =>
+            // ct is also passed to ExecuteAsync itself (not just the operations below), so cancellation is
+            // observed even while a retrying strategy (e.g. EnableRetryOnFailure) is sleeping between
+            // attempts, not just once the next attempt starts and reaches a ct-aware call.
+            return strategy.ExecuteAsync(async _ =>
             {
                 IDbContextTransaction transaction;
                 try
@@ -198,7 +170,13 @@ namespace DuonDevKit.EntityFrameworkCore
                         return Result.Fail<T>(Error.Unexpected(ErrorCodes.TransactionError, ex.Message));
                     }
                 }
-            });
+            }, ct);
+        }
+
+        /// <summary>Stand-in for <c>void</c> so <see cref="ExecuteInTransactionAsync(Func{CancellationToken, Task{Result}}, CancellationToken)"/> can delegate to the <see cref="Result{T}"/>-returning overload instead of duplicating its retry/transaction/save/commit logic.</summary>
+        private readonly struct Unit
+        {
+            public static readonly Unit Value = default;
         }
 
         private async Task ClearCurrentTransactionAsync()
