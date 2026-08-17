@@ -8,7 +8,7 @@
 
   <PropertyGroup>
     <PackageId>DuonDevKit.Dapper</PackageId>
-    <Version>0.2.0</Version>
+    <Version>0.2.1</Version>
     <Description>Dapper integration for DuonDevKit — runs raw SQL through the same DbContext connection/transaction as EF Core (so it stays atomic inside a UnitOfWork transaction), wrapped in DuonDevKit.Core's Result pattern.</Description>
     <PackageTags>dapper;entity-framework-core;result;sql;dotnet</PackageTags>
     <IsPackable>true</IsPackable>
