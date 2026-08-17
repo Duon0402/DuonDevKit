@@ -10,7 +10,6 @@ namespace DuonDevKit.Core.Results
     {
         private readonly T? _value;
 
-        /// <summary>Gets a value indicating whether the operation succeeded.</summary>
         public bool IsSuccess { get; }
 
         /// <summary>Gets a value indicating whether the operation failed.</summary>
@@ -36,11 +35,7 @@ namespace DuonDevKit.Core.Results
 
         private Result(bool isSuccess, Error error, T? value)
         {
-            if (isSuccess && error != Error.None)
-                throw new ArgumentException("A successful result cannot contain an error.", nameof(error));
-
-            if (!isSuccess && error == Error.None)
-                throw new ArgumentException("A failure result must contain an error.", nameof(error));
+            Error.ValidateInvariant(isSuccess, error, nameof(error));
 
             IsSuccess = isSuccess;
             Error = error;
