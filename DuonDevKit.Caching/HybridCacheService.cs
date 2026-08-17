@@ -33,7 +33,7 @@ namespace DuonDevKit.Caching
                     tags: null,
                     cancellationToken: cancellationToken);
 
-                return Result.Success(Option<T>.Some(value!));
+                return Result.Success(value is null ? Option<T>.None : Option<T>.Some(value));
             }
             catch (CacheMissException)
             {
@@ -98,6 +98,20 @@ namespace DuonDevKit.Caching
             catch (CacheFactoryFailedException ex)
             {
                 return Result.Fail<T>(ex.Error);
+            }
+            catch (CacheMissException)
+            {
+                // A concurrent GetAsync on the same key won HybridCache's stampede-join group; its
+                // synthetic "miss" factory threw for that shared operation. Run the caller's own factory
+                // directly for this call instead of surfacing a spurious infrastructure failure.
+                try
+                {
+                    return await factory(cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    return Result.Fail<T>(Error.Unexpected(ErrorCodes.CacheUnavailable, ex.Message));
+                }
             }
             catch (Exception ex)
             {

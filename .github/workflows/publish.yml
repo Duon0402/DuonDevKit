@@ -45,6 +45,9 @@ jobs:
       - name: Pack DuonDevKit.Dapper
         run: dotnet pack DuonDevKit.Dapper/DuonDevKit.Dapper.csproj --no-build --configuration Release --output ./nupkgs
 
+      - name: Pack DuonDevKit.Caching
+        run: dotnet pack DuonDevKit.Caching/DuonDevKit.Caching.csproj --no-build --configuration Release --output ./nupkgs
+
       - name: Pack DuonDevKit.Jwt
         run: dotnet pack DuonDevKit.Jwt/DuonDevKit.Jwt.csproj --no-build --configuration Release --output ./nupkgs
 

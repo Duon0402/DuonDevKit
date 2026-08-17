@@ -5,15 +5,19 @@ updates:
     schedule:
       interval: weekly
     groups:
-      # Bump every Microsoft.EntityFrameworkCore* / Microsoft.Extensions.DependencyInjection* package
-      # together in one PR. These aren't split per TargetFramework (the 9.x packages ship a single
-      # net8.0 asset used by both our net8.0 and net9.0 builds — see the csproj comments) — a partial,
-      # single-package bump here previously caused a NU1605 downgrade conflict (this family's
-      # transitive dependencies must stay in lockstep).
+      # Bump every Microsoft.EntityFrameworkCore* / Microsoft.Extensions.DependencyInjection* /
+      # Microsoft.Extensions.Caching* package together in one PR. These aren't split per
+      # TargetFramework (the 9.x packages ship a single net8.0 asset used by both our net8.0 and
+      # net9.0 builds — see the csproj comments) — a partial, single-package bump here previously
+      # caused a NU1605 downgrade conflict (this family's transitive dependencies must stay in
+      # lockstep). Microsoft.Extensions.Caching.Hybrid/StackExchangeRedis transitively require a
+      # minimum Microsoft.Extensions.DependencyInjection.Abstractions version, so they're grouped
+      # here too to avoid reintroducing the same conflict.
       efcore:
         patterns:
           - "Microsoft.EntityFrameworkCore*"
           - "Microsoft.Extensions.DependencyInjection*"
+          - "Microsoft.Extensions.Caching.*"
       # Microsoft.AspNetCore.* packages are single-TFM per major version (8.x -> net8.0 only,
       # 9.x -> net9.0 only — unlike the EF Core family above), so DuonDevKit.Jwt.csproj/
       # DuonDevKit.AspNetCore.Tests.csproj keep a per-TargetFramework Condition split. Grouping them
