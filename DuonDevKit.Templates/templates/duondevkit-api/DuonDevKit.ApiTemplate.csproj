@@ -4,10 +4,20 @@
     <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <!-- Regenerated per-instantiation by the "userSecretsId" template symbol (dotnet new duondevkit-api),
+         so projects scaffolded from this template don't share one secrets.json on the same machine. -->
+    <UserSecretsId>00000000-0000-0000-0000-000000000000</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.18" />
+    <!-- Design-time only: lets `dotnet ef migrations add ...` work when the model changes later.
+         An initial migration already ships under Migrations/, so this isn't needed just to run. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.18">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.18" />
     <PackageReference Include="DuonDevKit.Core" Version="0.8.1" />
     <PackageReference Include="DuonDevKit.EntityFrameworkCore" Version="0.7.1" />
     <PackageReference Include="DuonDevKit.AspNetCore" Version="0.4.1" />

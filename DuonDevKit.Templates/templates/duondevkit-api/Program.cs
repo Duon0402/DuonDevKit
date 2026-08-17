@@ -37,7 +37,11 @@ builder.Services.AddDuonDevKitDapper<AppDbContext>();
 #if (auth)
 builder.Services.AddDuonDevKitJwt(new JwtSettings
 {
-    // Development-only key — load this from user secrets or a secret store before shipping.
+    // Falls back to a development-only key so the app runs immediately after scaffolding. Set a
+    // real one before shipping: `dotnet user-secrets set "Jwt:SigningKey" "<32+ byte value>"` for
+    // local dev (this project already has a UserSecretsId), or an environment variable /
+    // your host's secret store (e.g. Azure Key Vault, AWS Secrets Manager) in production —
+    // never commit a real signing key to source control.
     SigningKey = builder.Configuration["Jwt:SigningKey"] ?? "development-only-signing-key-change-this-before-production",
     Issuer = "DuonDevKit.ApiTemplate",
     Audience = "DuonDevKit.ApiTemplate",
@@ -47,6 +51,7 @@ builder.Services.AddAuthorization();
 #if (validation)
 builder.Services.AddDuonDevKitValidators(typeof(Program).Assembly);
 #endif
+builder.Services.AddOpenApi();
 
 var app = builder.Build();
 
@@ -56,10 +61,19 @@ app.UseAuthentication();
 app.UseAuthorization();
 #endif
 
+if (app.Environment.IsDevelopment())
+{
+    // GET /openapi/v1.json — pair with a UI of your choice (e.g. `dotnet add package
+    // Scalar.AspNetCore` + `app.MapScalarApiReference()`, or Swagger UI) if you want one browsable.
+    app.MapOpenApi();
+}
+
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    await db.Database.EnsureCreatedAsync();
+    // Applies Migrations/ (already included) instead of EnsureCreated, so schema changes going
+    // forward are tracked normally: `dotnet ef migrations add <Name>` after editing the model.
+    await db.Database.MigrateAsync();
 }
 
 #if (auth)

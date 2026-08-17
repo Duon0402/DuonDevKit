@@ -8,6 +8,12 @@
   "sourceName": "DuonDevKit.ApiTemplate",
   "preferNameDirectory": true,
   "symbols": {
+    "userSecretsId": {
+      "type": "generated",
+      "generator": "guid",
+      "parameters": { "defaultFormat": "D" },
+      "replaces": "00000000-0000-0000-0000-000000000000"
+    },
     "auth": {
       "type": "parameter",
       "datatype": "bool",
