@@ -1,4 +1,6 @@
+using DuonDevKit.Core.Errors;
 using DuonDevKit.EntityFrameworkCore;
+using DuonDevKit.EntityFrameworkCore.Repositories;
 using Microsoft.EntityFrameworkCore;
 
 namespace DuonDevKit.Jwt.Tests
@@ -127,6 +129,67 @@ namespace DuonDevKit.Jwt.Tests
             // single-token rejection.
             var attemptToUseC = await service.RotateAsync(rotateToC.Value.NewRefreshToken);
             Assert.True(attemptToUseC.IsFailure);
+        }
+
+        [Fact]
+        public async Task RotateAsync_ReplayWhereFamilyRevokeSaveFails_ReturnsFailureInsteadOfSilentUnauthorized()
+        {
+            // If RevokeFamilyAsync's save fails for a genuine reason (not a benign concurrency conflict),
+            // that failure must not be swallowed and reported as a plain Unauthorized — that would make
+            // the caller (and any monitoring) believe the security containment succeeded when it didn't.
+            var settings = TestFactory.CreateSettings();
+            var (context, service) = TestFactory.CreateRefreshTokenService(settings);
+            var root = await service.IssueAsync("user-1");
+            await service.RotateAsync(root.Value); // root revoked, child issued
+
+            var failure = Error.Unexpected("test.save-failed", "Simulated save failure.");
+            var failingUnitOfWork = new AlwaysFailingSaveUnitOfWork(new UnitOfWork(context), failure);
+            var replayService = new RefreshTokenService(
+                new Repository<RefreshToken, string>(context), failingUnitOfWork, new JwtTokenGenerator(settings), settings);
+
+            var replay = await replayService.RotateAsync(root.Value);
+
+            Assert.True(replay.IsFailure);
+            Assert.Equal(failure, replay.Error);
+        }
+
+        [Fact]
+        public async Task RotateAsync_ReplayCascadeRevoke_SavesEachNotYetRevokedSiblingIndividually()
+        {
+            // RevokeFamilyAsync must save each not-yet-revoked sibling individually rather than batching
+            // them into one SaveChangesAsync call: on a real relational provider SaveChanges is atomic, so
+            // a concurrency conflict on ONE sibling (touched by someone else at that exact instant) would
+            // abort the whole batch and leave every OTHER still-valid sibling un-revoked in the database —
+            // exactly the gap a stolen token could exploit. Counting SaveChangesAsync invocations verifies
+            // this directly, without depending on the InMemory provider's own non-atomic (and therefore
+            // misleading) concurrency-conflict behavior.
+            var settings = TestFactory.CreateSettings();
+            var (context, service) = TestFactory.CreateRefreshTokenService(settings);
+
+            var root = await service.IssueAsync("user-1");
+            var familyId = context.RefreshTokens.Single().FamilyId;
+            await service.RotateAsync(root.Value); // root revoked, "child" issued — one valid leaf so far
+
+            // Seed a second, still-valid sibling in the same family so the cascade revoke has two rows.
+            context.RefreshTokens.Add(new RefreshToken
+            {
+                Id = Guid.NewGuid().ToString(),
+                UserId = "user-1",
+                FamilyId = familyId,
+                TokenHash = "sibling-hash",
+                ExpiresAt = DateTime.UtcNow.AddDays(1),
+            });
+            await context.SaveChangesAsync();
+
+            var saveCount = 0;
+            var instrumentedUnitOfWork = new InstrumentedUnitOfWork(new UnitOfWork(context), () => saveCount++);
+            var replayService = new RefreshTokenService(
+                new Repository<RefreshToken, string>(context), instrumentedUnitOfWork, new JwtTokenGenerator(settings), settings);
+
+            var replay = await replayService.RotateAsync(root.Value);
+
+            Assert.True(replay.IsFailure);
+            Assert.Equal(2, saveCount); // one save per not-yet-revoked sibling (child + seeded sibling)
         }
 
         [Fact]

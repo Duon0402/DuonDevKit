@@ -24,7 +24,6 @@ namespace DuonDevKit.Core.Results
         /// <summary>Whether a page after <see cref="PageNumber"/> exists.</summary>
         public bool HasNextPage => PageNumber < TotalPages;
 
-        /// <summary>Creates a page of results.</summary>
         public PagedResult(IReadOnlyList<T> items, int pageNumber, int pageSize, int totalCount)
         {
             ArgumentNullException.ThrowIfNull(items);

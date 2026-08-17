@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using DuonDevKit.Core.Validation;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
 
@@ -32,10 +33,8 @@ namespace DuonDevKit.AspNetCore.Validation
             if (argument is null)
                 return await next(context);
 
-            var validationContext = new ValidationContext(argument);
-            var results = new List<ValidationResult>();
-
-            if (Validator.TryValidateObject(argument, validationContext, results, validateAllProperties: true))
+            var results = DataAnnotationsValidator.Collect(argument);
+            if (results.Count == 0)
                 return await next(context);
 
             var errors = results

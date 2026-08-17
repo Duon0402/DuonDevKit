@@ -8,7 +8,7 @@
 
   <PropertyGroup>
     <PackageId>DuonDevKit.Caching</PackageId>
-    <Version>0.1.0</Version>
+    <Version>0.1.1</Version>
     <Description>Cache abstraction for DuonDevKit — HybridCache-backed (memory-only, or memory+Redis when configured), wrapped in DuonDevKit.Core's Result pattern.</Description>
     <PackageTags>caching;redis;hybridcache;result;dotnet</PackageTags>
     <IsPackable>true</IsPackable>
@@ -24,6 +24,12 @@
 
   <ItemGroup>
     <ProjectReference Include="..\DuonDevKit.Core\DuonDevKit.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Lets the test project deterministically drive HybridCache's stampede-join leader/joiner roles
+         directly (bypassing HybridCacheService's public surface) to regression-test race conditions. -->
+    <InternalsVisibleTo Include="DuonDevKit.Caching.Tests" />
   </ItemGroup>
 
   <ItemGroup>

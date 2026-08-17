@@ -39,6 +39,14 @@ namespace DuonDevKit.Caching
             {
                 return Result.Success(Option<T>.None);
             }
+            catch (CacheFactoryFailedException)
+            {
+                // A concurrent GetOrCreateAsync on the same key won HybridCache's stampede-join group,
+                // and its factory failed — that failure belongs to the other call, not this one. GetAsync
+                // never creates/invokes a factory, so report the same clean miss it would if it had won
+                // the join itself, instead of surfacing a spurious infrastructure failure.
+                return Result.Success(Option<T>.None);
+            }
             catch (Exception ex)
             {
                 return Result.Fail<Option<T>>(Error.Unexpected(ErrorCodes.CacheUnavailable, ex.Message));
@@ -76,9 +84,10 @@ namespace DuonDevKit.Caching
         {
             ArgumentNullException.ThrowIfNull(factory);
 
+            var options = expiration.HasValue ? new HybridCacheEntryOptions { Expiration = expiration } : null;
+
             try
             {
-                var options = expiration.HasValue ? new HybridCacheEntryOptions { Expiration = expiration } : null;
                 var value = await _hybridCache.GetOrCreateAsync<T>(
                     key,
                     async ct =>
@@ -103,10 +112,16 @@ namespace DuonDevKit.Caching
             {
                 // A concurrent GetAsync on the same key won HybridCache's stampede-join group; its
                 // synthetic "miss" factory threw for that shared operation. Run the caller's own factory
-                // directly for this call instead of surfacing a spurious infrastructure failure.
+                // directly for this call instead of surfacing a spurious infrastructure failure — and
+                // persist the result ourselves, since HybridCache never got to cache it for this call.
                 try
                 {
-                    return await factory(cancellationToken);
+                    var result = await factory(cancellationToken);
+                    if (result.IsFailure)
+                        return result;
+
+                    await _hybridCache.SetAsync(key, result.Value, options, tags: null, cancellationToken: cancellationToken);
+                    return result;
                 }
                 catch (Exception ex)
                 {
@@ -119,8 +134,12 @@ namespace DuonDevKit.Caching
             }
         }
 
-        /// <summary>Signals a genuine cache miss from <see cref="GetAsync{T}"/>'s synthetic factory, without creating an entry.</summary>
-        private sealed class CacheMissException : Exception
+        /// <summary>
+        /// Signals a genuine cache miss from <see cref="GetAsync{T}"/>'s synthetic factory, without creating
+        /// an entry. Internal (rather than private) so tests can drive <see cref="HybridCache"/> directly to
+        /// deterministically reproduce a <see cref="GetAsync{T}"/> call winning the stampede-join leader role.
+        /// </summary>
+        internal sealed class CacheMissException : Exception
         {
         }
 

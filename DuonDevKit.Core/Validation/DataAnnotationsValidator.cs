@@ -32,16 +32,30 @@ namespace DuonDevKit.Core.Validation
         /// </summary>
         public static Result Validate(object instance)
         {
-            ArgumentNullException.ThrowIfNull(instance);
-
-            var context = new ValidationContext(instance);
-            var results = new List<ValidationResult>();
-
-            if (Validator.TryValidateObject(instance, context, results, validateAllProperties: true))
+            var results = Collect(instance);
+            if (results.Count == 0)
                 return Result.Success();
 
             var message = string.Join("; ", results.Select(FormatFailure));
             return Error.Validation(ValidationErrorCodes.Invalid, message);
+        }
+
+        /// <summary>
+        /// Runs the same underlying <see cref="Validator.TryValidateObject(object, ValidationContext, ICollection{ValidationResult}?, bool)"/>
+        /// call as <see cref="Validate"/>, returning the raw violations for callers that need their own
+        /// projection instead of a joined-message <see cref="Result"/> (e.g. <c>DuonDevKit.AspNetCore</c>'s
+        /// <c>ValidationFilter&lt;T&gt;</c>, which maps them to a field-name-to-messages dictionary).
+        /// Internal: the raw <see cref="ValidationResult"/> shape isn't part of this library's public,
+        /// <see cref="Result"/>-based surface.
+        /// </summary>
+        internal static IReadOnlyList<ValidationResult> Collect(object instance)
+        {
+            ArgumentNullException.ThrowIfNull(instance);
+
+            var context = new ValidationContext(instance);
+            var results = new List<ValidationResult>();
+            Validator.TryValidateObject(instance, context, results, validateAllProperties: true);
+            return results;
         }
 
         private static string FormatFailure(ValidationResult result)

@@ -158,6 +158,97 @@ namespace DuonDevKit.Caching.Tests
             Assert.Equal("value", getOrCreateResult.Value);
         }
 
+        // Regression: GetAsync only caught its own synthetic CacheMissException, not
+        // CacheFactoryFailedException — if GetAsync's call is joined (via HybridCache's stampede-join)
+        // into a concurrent GetOrCreateAsync call whose factory fails, that failure belongs to the other
+        // call, not this one; it must not surface as a spurious CacheUnavailable infrastructure failure.
+        //
+        // The join is forced deterministically rather than raced blindly: GetOrCreateAsync's factory
+        // blocks after starting (which is after HybridCache has already registered it as the in-flight
+        // leader for this key), so GetAsync is guaranteed to be issued while that operation is still
+        // pending and therefore joins it.
+        [Fact]
+        public async Task GetAsync_ConcurrentWith_FailingGetOrCreateAsync_NeverSurfacesTheOtherCallsFactoryFailure()
+        {
+            var cache = BuildCacheService();
+            var key = $"stampede-fail-{Guid.NewGuid()}";
+            var error = Error.Unexpected("TEST-STAMPEDE", "boom");
+            var factoryStarted = new TaskCompletionSource();
+            var releaseFactory = new TaskCompletionSource();
+
+            var getOrCreateTask = cache.GetOrCreateAsync<string>(key, async _ =>
+            {
+                factoryStarted.SetResult();
+                await releaseFactory.Task;
+                return Result.Fail<string>(error);
+            });
+
+            await factoryStarted.Task;
+            var getTask = cache.GetAsync<string>(key);
+            releaseFactory.SetResult();
+
+            var getResult = await getTask;
+            Assert.True(getResult.IsSuccess, $"GetAsync must never fail due to a concurrent call's factory failure, got {(getResult.IsFailure ? getResult.Error.Code : "")}");
+            Assert.False(getResult.Value.HasValue);
+
+            var getOrCreateResult = await getOrCreateTask;
+            Assert.True(getOrCreateResult.IsFailure);
+            Assert.Equal(error, getOrCreateResult.Error);
+        }
+
+        // Regression: when GetOrCreateAsync loses HybridCache's stampede-join (a concurrent GetAsync call
+        // on the same key won it) and falls back to invoking the factory directly, it must still persist
+        // the computed value — otherwise the entry stays empty and the factory keeps being re-invoked on
+        // every subsequent racing call, silently degrading the cache to near-zero hit rate for that key.
+        //
+        // The join is forced deterministically: this test drives HybridCache directly (via
+        // InternalsVisibleTo) with a blocked factory throwing the same CacheMissException GetAsync's own
+        // synthetic factory throws, simulating a slow-to-miss GetAsync call that wins the leader role for
+        // this key. GetOrCreateAsync is then guaranteed to be issued while that "GetAsync" is still
+        // pending, so it joins it and observes the miss.
+        [Fact]
+        public async Task GetOrCreateAsync_LosesStampedeJoinToAGetAsyncLeader_StillPersistsItsOwnComputedValue()
+        {
+            var (cache, hybridCache) = BuildCacheServiceWithHybridCache();
+            var key = $"stampede-persist-{Guid.NewGuid()}";
+            var leaderStarted = new TaskCompletionSource();
+            var releaseLeader = new TaskCompletionSource();
+
+            // Matches HybridCacheService.GetAsync's own call shape exactly (single-type-param overload,
+            // not the explicit TState one) — HybridCache tracks a per-key type signature and rejects
+            // mixing shapes for the same key with a CACHE001 error.
+            var leaderTask = hybridCache.GetOrCreateAsync<string>(key, async _ =>
+            {
+                leaderStarted.SetResult();
+                await releaseLeader.Task;
+                throw new HybridCacheService.CacheMissException();
+            }).AsTask();
+
+            await leaderStarted.Task;
+            var getOrCreateTask = cache.GetOrCreateAsync(key, _ => Task.FromResult(Result.Success("value")));
+            releaseLeader.SetResult();
+
+            await Assert.ThrowsAsync<HybridCacheService.CacheMissException>(() => leaderTask);
+
+            var getOrCreateResult = await getOrCreateTask;
+            Assert.True(getOrCreateResult.IsSuccess, getOrCreateResult.IsFailure ? getOrCreateResult.Error.Code : "");
+            Assert.Equal("value", getOrCreateResult.Value);
+
+            var verifyResult = await cache.GetAsync<string>(key);
+            Assert.True(verifyResult.IsSuccess, verifyResult.IsFailure ? verifyResult.Error.Code : "");
+            Assert.True(verifyResult.Value.HasValue, "expected the joiner's computed value to have been persisted, but the cache is empty");
+            Assert.Equal("value", verifyResult.Value.Value);
+        }
+
+        private static (ICacheService Cache, HybridCache HybridCache) BuildCacheServiceWithHybridCache()
+        {
+            var services = new ServiceCollection();
+            services.AddHybridCache();
+            var provider = services.BuildServiceProvider();
+            var hybridCache = provider.GetRequiredService<HybridCache>();
+            return (new HybridCacheService(hybridCache), hybridCache);
+        }
+
         [Fact]
         public async Task GetAsync_HybridCacheThrows_ReturnsCacheUnavailableFailure()
         {

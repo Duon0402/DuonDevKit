@@ -1,6 +1,8 @@
 using DuonDevKit.EntityFrameworkCore.Auditing;
 using DuonDevKit.EntityFrameworkCore.DependencyInjection;
 using DuonDevKit.Jwt.DependencyInjection;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -94,6 +96,46 @@ namespace DuonDevKit.Jwt.Tests
             Assert.Equal("test-issuer", options.TokenValidationParameters.ValidIssuer);
             Assert.Equal("test-audience", options.TokenValidationParameters.ValidAudience);
             Assert.Equal([SecurityAlgorithms.HmacSha256], options.TokenValidationParameters.ValidAlgorithms);
+        }
+
+        [Fact]
+        public async Task AddDuonDevKitJwt_NoPriorAuthenticationRegistered_DefaultsToJwtBearerScheme()
+        {
+            await using var scope = BuildProvider().CreateAsyncScope();
+
+            var authOptions = scope.ServiceProvider.GetRequiredService<IOptions<AuthenticationOptions>>().Value;
+
+            Assert.Equal(JwtBearerDefaults.AuthenticationScheme, authOptions.DefaultScheme);
+        }
+
+        [Fact]
+        public async Task AddDuonDevKitJwt_HostRegisteredCookieAuthenticationBeforeCall_DoesNotOverwriteDefaultScheme()
+        {
+            // A host app with its own primary scheme (e.g. cookie auth for an admin UI) that also calls
+            // AddDuonDevKitJwt for its API must keep its own DefaultScheme — otherwise cookie-authenticated
+            // requests relying on the default scheme would silently stop authenticating.
+            await using var scope = BuildProvider(
+                beforeJwt: services => services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme).AddCookie())
+                .CreateAsyncScope();
+
+            var authOptions = scope.ServiceProvider.GetRequiredService<IOptions<AuthenticationOptions>>().Value;
+
+            Assert.Equal(CookieAuthenticationDefaults.AuthenticationScheme, authOptions.DefaultScheme);
+        }
+
+        [Fact]
+        public async Task AddDuonDevKitJwt_HostRegisteredCookieAuthenticationBeforeCall_StillRegistersJwtBearerHandler()
+        {
+            // Even when it isn't the default scheme, the JWT bearer handler must still be usable via
+            // [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)].
+            await using var scope = BuildProvider(
+                beforeJwt: services => services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme).AddCookie())
+                .CreateAsyncScope();
+
+            var schemeProvider = scope.ServiceProvider.GetRequiredService<IAuthenticationSchemeProvider>();
+            var scheme = await schemeProvider.GetSchemeAsync(JwtBearerDefaults.AuthenticationScheme);
+
+            Assert.NotNull(scheme);
         }
     }
 }

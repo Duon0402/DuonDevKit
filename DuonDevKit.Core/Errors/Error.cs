@@ -60,5 +60,15 @@ namespace DuonDevKit.Core.Errors
         /// <summary>Creates an unexpected/unhandled error.</summary>
         public static Error Unexpected(string code, string message)
             => new(ErrorType.Unexpected, code, message);
+
+        /// <summary>Throws <see cref="ArgumentException"/> if <paramref name="error"/> disagrees with <paramref name="isSuccess"/> — shared by <see cref="Results.Result"/> and <see cref="Results.Result{T}"/> so both enforce the same success/error invariant identically.</summary>
+        internal static void ValidateInvariant(bool isSuccess, Error error, string paramName)
+        {
+            if (isSuccess && error != None)
+                throw new ArgumentException("A successful result cannot contain an error.", paramName);
+
+            if (!isSuccess && error == None)
+                throw new ArgumentException("A failure result must contain an error.", paramName);
+        }
     }
 }
