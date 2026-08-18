@@ -10,9 +10,9 @@ namespace DuonDevKit.AspNetCore.Validation
     /// validation against a bound parameter of type <typeparamref name="T"/> before the endpoint handler
     /// runs, short-circuiting with a <c>400</c> <see cref="ValidationProblem"/> (field name → messages) if
     /// invalid. Register via <see cref="EndpointFilterExtensions.WithDuonDevKitValidation{T}"/> rather than
-    /// directly — no dependency beyond the base class library, unlike <c>DuonDevKit.Validation</c>'s
-    /// FluentValidation integration; use that instead for rules that need to be conditional, compare
-    /// properties against each other, or call out to a database/service.
+    /// directly. For rules that need to be conditional, compare properties against each other, or call out
+    /// to a database/service, use FluentValidation instead — see <see cref="FluentValidationFilter{T}"/>
+    /// for the equivalent Minimal API filter, which produces the same response shape as this one.
     /// </summary>
     /// <remarks>
     /// Only <typeparamref name="T"/>'s own properties are checked, not nested complex properties or

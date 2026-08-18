@@ -13,11 +13,10 @@ namespace DuonDevKit.Validation
     /// <remarks>
     /// The resulting <see cref="Error"/> carries every blocking (<see cref="Severity.Error"/>) failure
     /// joined into one message (<c>"PropertyName: ErrorMessage; ..."</c>) — <see cref="Error"/> has no
-    /// field-level structure to preserve a per-property error list. For an HTTP endpoint that needs a
-    /// field-level <c>{ "PropertyName": ["message"] }</c> response body, validate directly against
-    /// <see cref="IValidator{T}"/>/<see cref="ValidationResult"/> instead of going through this
-    /// extension — see <c>DuonDevKit.AspNetCore</c>'s <c>WithDuonDevKitValidation&lt;T&gt;()</c> for that
-    /// case (DataAnnotations-based, so it needs no dependency on this package).
+    /// field-level structure to preserve a per-property error list. For a Minimal API endpoint that needs
+    /// a field-level <c>{ "PropertyName": ["message"] }</c> response body instead, use
+    /// <c>DuonDevKit.AspNetCore</c>'s <c>WithDuonDevKitFluentValidation&lt;T&gt;()</c>, which validates
+    /// directly against this same <see cref="IValidator{T}"/> without going through this extension.
     /// </remarks>
     public static class ValidatorExtensions
     {

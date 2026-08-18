@@ -18,5 +18,19 @@ namespace DuonDevKit.AspNetCore.Validation
         /// </example>
         public static RouteHandlerBuilder WithDuonDevKitValidation<T>(this RouteHandlerBuilder builder) where T : class
             => builder.AddEndpointFilter<ValidationFilter<T>>();
+
+        /// <summary>
+        /// Validates the endpoint's bound parameter of type <typeparamref name="T"/> against a DI-resolved
+        /// FluentValidation <c>IValidator&lt;T&gt;</c> before the handler runs — short-circuits with the
+        /// same <c>400</c> field-level <c>ValidationProblem</c> shape as <see cref="WithDuonDevKitValidation{T}"/>,
+        /// so both validation styles are interchangeable at this boundary.
+        /// </summary>
+        /// <example>
+        /// <code>
+        /// app.MapPost("/orders", Handler).WithDuonDevKitFluentValidation&lt;CreateOrderRequest&gt;();
+        /// </code>
+        /// </example>
+        public static RouteHandlerBuilder WithDuonDevKitFluentValidation<T>(this RouteHandlerBuilder builder) where T : class
+            => builder.AddEndpointFilter<FluentValidationFilter<T>>();
     }
 }

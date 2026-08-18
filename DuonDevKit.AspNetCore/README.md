@@ -67,7 +67,32 @@ app.MapPost("/orders", (CreateOrderRequest request) => Results.Ok())
 ```
 
 An invalid request never reaches the handler; the response body is a standard
-`{ "errors": { "Quantity": ["..."] }, "errorCode": "VALIDATION001" }` shape. For rules that need to
-be conditional, compare properties against each other, or call out to a database/service, use
-`DuonDevKit.Validation`'s FluentValidation integration directly in the handler instead — it composes
-with the same `Result`-to-HTTP mapping shown above.
+`{ "errors": { "Quantity": ["..."] }, "errorCode": "VALIDATION001" }` shape.
+
+For rules that need to be conditional, compare properties against each other, or call out to a
+database/service, use `WithDuonDevKitFluentValidation<T>()` instead — it validates against a DI-resolved
+FluentValidation `IValidator<T>` (register one with `DuonDevKit.Validation`'s
+`AddDuonDevKitValidators(...)`) and produces the exact same `400` field-level response shape, so the two
+filters are interchangeable at this boundary:
+
+```csharp
+using DuonDevKit.AspNetCore.Validation;
+
+public class CreateOrderRequestValidator : AbstractValidator<CreateOrderRequest>
+{
+    public CreateOrderRequestValidator()
+    {
+        RuleFor(r => r.CustomerName).NotEmpty().MaximumLength(100);
+        RuleFor(r => r.Quantity).InclusiveBetween(1, 1000);
+    }
+}
+
+builder.Services.AddDuonDevKitValidators(typeof(Program).Assembly);
+
+app.MapPost("/orders", (CreateOrderRequest request) => Results.Ok())
+   .WithDuonDevKitFluentValidation<CreateOrderRequest>();
+```
+
+Note: referencing `DuonDevKit.AspNetCore` pulls in `DuonDevKit.Validation` (and FluentValidation)
+transitively, even if you only ever use `WithDuonDevKitValidation<T>()`'s DataAnnotations path — a
+deliberate trade-off to give both filters the same zero-glue-code ergonomics.
