@@ -15,7 +15,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Dapper" Version="2.1.35" />
+    <PackageReference Include="Dapper" Version="2.1.79" />
     <!-- Unconditional: see DuonDevKit.EntityFrameworkCore.csproj for why the EF Core family doesn't
          need a per-TFM version split. -->
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.18" />
