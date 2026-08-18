@@ -19,10 +19,15 @@ namespace DuonDevKit.EntityFrameworkCore
                 await _context.SaveChangesAsync(ct);
                 return Result.Success();
             }
-            catch (DbUpdateConcurrencyException ex)
+            catch (DbUpdateConcurrencyException)
             {
+                // Unlike the DbUpdateException branch below, this is ErrorType.Conflict — a type the
+                // AspNetCore mapping treats as caller-authored and passes straight through to the HTTP
+                // response (only Unexpected gets a generic-message substitution there). So this message
+                // must itself stay safe to show a client; it must never be the raw ex.Message, which is an
+                // EF-authored string that could change wording/content across EF versions.
                 await RollbackActiveTransactionOnFailureAsync(ct);
-                return Error.Conflict(ErrorCodes.ConcurrencyConflict, ex.Message);
+                return Error.Conflict(ErrorCodes.ConcurrencyConflict, "The record was modified or deleted by another operation since it was loaded. Reload and try again.");
             }
             catch (DbUpdateException ex)
             {
