@@ -9,6 +9,11 @@
     <!-- NU5128: normal for a template package — it intentionally ships no lib/ assembly. -->
     <NoWarn>$(NoWarn);NU5128</NoWarn>
     <IsPackable>true</IsPackable>
+    <!-- Overrides Directory.Build.props' global IncludeSymbols=true: this project has no compiled
+         output at all (IncludeBuildOutput=false above), so there's no PDB for a .snupkg to carry —
+         attempting one fails the whole `dotnet pack` with NU5017 ("no dependencies nor content"),
+         even though the main .nupkg packs fine. -->
+    <IncludeSymbols>false</IncludeSymbols>
   </PropertyGroup>
 
   <PropertyGroup>
