@@ -50,8 +50,11 @@ be attached to it.
    ```
 5. The `publish` workflow runs automatically: build → test → pack → push all eight `.nupkg` files to
    NuGet.org (`--skip-duplicate`, so re-running a tag after a partial failure, or a tag where only
-   some packages changed, won't error on packages already published).
-6. Confirm the expected package(s) appear on NuGet.org with the expected version.
+   some packages changed, won't error on packages already published) → create a GitHub Release for the
+   tag with auto-generated notes (`gh release create --generate-notes`, summarizing merged PRs/commits
+   since the previous tag) and the `.nupkg`/`.snupkg` files attached as downloadable assets.
+6. Confirm the expected package(s) appear on NuGet.org with the expected version, and that a GitHub
+   Release was created for the tag.
 
 ## Local sanity check before tagging
 

@@ -11,7 +11,7 @@ jobs:
     timeout-minutes: 15
     permissions:
       id-token: write
-      contents: read
+      contents: write
 
     steps:
       - name: Checkout
@@ -71,3 +71,11 @@ jobs:
 
       - name: Push packages to NuGet.org
         run: dotnet nuget push "./nupkgs/*.nupkg" --api-key "${{ steps.nuget-login.outputs.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json --skip-duplicate
+
+      # Auto-generates release notes from merged PRs/commits since the previous tag — no changelog to
+      # maintain by hand. Only applies going forward; existing tags before this step was added are not
+      # backfilled with a Release.
+      - name: Create GitHub Release
+        run: gh release create "${{ github.ref_name }}" ./nupkgs/*.nupkg ./nupkgs/*.snupkg --generate-notes
+        env:
+          GH_TOKEN: ${{ github.token }}
