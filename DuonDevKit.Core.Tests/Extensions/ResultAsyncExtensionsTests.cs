@@ -267,5 +267,110 @@ namespace DuonDevKit.Core.Tests.Extensions
             Assert.Equal(originalError, ensured.Error);
             Assert.False(predicateInvoked);
         }
+
+        [Fact]
+        public async Task MapAsync_SyncMapper_CanceledToken_ThrowsOperationCanceledException_AndDoesNotInvokeMapper()
+        {
+            var resultTask = Task.FromResult(Result.Success(10));
+            var mapperInvoked = false;
+            using var cts = new CancellationTokenSource();
+            cts.Cancel();
+
+            await Assert.ThrowsAsync<OperationCanceledException>(() => resultTask.MapAsync(v =>
+            {
+                mapperInvoked = true;
+                return v.ToString();
+            }, cts.Token));
+
+            Assert.False(mapperInvoked);
+        }
+
+        [Fact]
+        public async Task MapAsync_AsyncMapper_CanceledToken_ThrowsOperationCanceledException_AndDoesNotInvokeMapper()
+        {
+            var resultTask = Task.FromResult(Result.Success(10));
+            var mapperInvoked = false;
+            using var cts = new CancellationTokenSource();
+            cts.Cancel();
+
+            await Assert.ThrowsAsync<OperationCanceledException>(() => resultTask.MapAsync(async v =>
+            {
+                mapperInvoked = true;
+                await Task.Yield();
+                return v.ToString();
+            }, cts.Token));
+
+            Assert.False(mapperInvoked);
+        }
+
+        [Fact]
+        public async Task BindAsync_SyncBinder_CanceledToken_ThrowsOperationCanceledException_AndDoesNotInvokeBinder()
+        {
+            var resultTask = Task.FromResult(Result.Success(10));
+            var binderInvoked = false;
+            using var cts = new CancellationTokenSource();
+            cts.Cancel();
+
+            await Assert.ThrowsAsync<OperationCanceledException>(() => resultTask.BindAsync(v =>
+            {
+                binderInvoked = true;
+                return Result.Success(v.ToString());
+            }, cts.Token));
+
+            Assert.False(binderInvoked);
+        }
+
+        [Fact]
+        public async Task BindAsync_AsyncBinder_CanceledToken_ThrowsOperationCanceledException_AndDoesNotInvokeBinder()
+        {
+            var resultTask = Task.FromResult(Result.Success(10));
+            var binderInvoked = false;
+            using var cts = new CancellationTokenSource();
+            cts.Cancel();
+
+            await Assert.ThrowsAsync<OperationCanceledException>(() => resultTask.BindAsync(async v =>
+            {
+                binderInvoked = true;
+                await Task.Yield();
+                return Result.Success(v.ToString());
+            }, cts.Token));
+
+            Assert.False(binderInvoked);
+        }
+
+        [Fact]
+        public async Task EnsureAsync_SyncPredicate_CanceledToken_ThrowsOperationCanceledException_AndDoesNotInvokePredicate()
+        {
+            var resultTask = Task.FromResult(Result.Success(10));
+            var predicateInvoked = false;
+            using var cts = new CancellationTokenSource();
+            cts.Cancel();
+
+            await Assert.ThrowsAsync<OperationCanceledException>(() => resultTask.EnsureAsync(v =>
+            {
+                predicateInvoked = true;
+                return v > 0;
+            }, Error.Business("BIZ001", "Value must be positive."), cts.Token));
+
+            Assert.False(predicateInvoked);
+        }
+
+        [Fact]
+        public async Task EnsureAsync_AsyncPredicate_CanceledToken_ThrowsOperationCanceledException_AndDoesNotInvokePredicate()
+        {
+            var resultTask = Task.FromResult(Result.Success(10));
+            var predicateInvoked = false;
+            using var cts = new CancellationTokenSource();
+            cts.Cancel();
+
+            await Assert.ThrowsAsync<OperationCanceledException>(() => resultTask.EnsureAsync(async v =>
+            {
+                predicateInvoked = true;
+                await Task.Yield();
+                return v > 0;
+            }, Error.Business("BIZ001", "Value must be positive."), cts.Token));
+
+            Assert.False(predicateInvoked);
+        }
     }
 }
