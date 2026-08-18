@@ -27,6 +27,20 @@ namespace DuonDevKit.EntityFrameworkCore.Tests
             return new TestDbContext(options);
         }
 
+        /// <summary>Test-only context marking <see cref="TestEntity.Name"/> as a concurrency token, so a stale write against it triggers a real <see cref="DbUpdateConcurrencyException"/> (the InMemory provider enforces concurrency tokens the same way a relational provider would).</summary>
+        private class ConcurrencyTestDbContext : TestDbContext
+        {
+            public ConcurrencyTestDbContext(DbContextOptions<TestDbContext> options) : base(options)
+            {
+            }
+
+            protected override void OnModelCreating(ModelBuilder modelBuilder)
+            {
+                base.OnModelCreating(modelBuilder);
+                modelBuilder.Entity<TestEntity>().Property(e => e.Name).IsConcurrencyToken();
+            }
+        }
+
         /// <summary>
         /// Backs a <see cref="TestDbContext"/> with a real SQLite database (in-memory, via a kept-open
         /// connection) instead of the EF Core InMemory provider, since InMemory treats transactions as a
@@ -81,6 +95,36 @@ namespace DuonDevKit.EntityFrameworkCore.Tests
             var result = await unitOfWork.SaveChangesAsync();
 
             Assert.True(result.IsFailure);
+        }
+
+        [Fact]
+        public async Task SaveChangesAsync_OnDbUpdateConcurrencyException_ReturnsConflictErrorWithSafeMessage()
+        {
+            var dbName = Guid.NewGuid().ToString();
+            var options = new DbContextOptionsBuilder<TestDbContext>().UseInMemoryDatabase(dbName).Options;
+
+            using (var seed = new ConcurrencyTestDbContext(options))
+            {
+                seed.TestEntities.Add(new TestEntity { Id = 1, Name = "A" });
+                seed.SaveChanges();
+            }
+
+            using var context1 = new ConcurrencyTestDbContext(options);
+            using var context2 = new ConcurrencyTestDbContext(options);
+            var entity1 = await context1.TestEntities.FindAsync(1);
+            var entity2 = await context2.TestEntities.FindAsync(1);
+            entity1!.Name = "B";
+            await context1.SaveChangesAsync();
+
+            entity2!.Name = "C";
+            var unitOfWork = new UnitOfWork(context2);
+            var result = await unitOfWork.SaveChangesAsync();
+
+            Assert.True(result.IsFailure);
+            Assert.Equal(ErrorType.Conflict, result.Error.Type);
+            Assert.Equal(ErrorCodes.ConcurrencyConflict, result.Error.Code);
+            Assert.False(string.IsNullOrWhiteSpace(result.Error.Message));
+            Assert.DoesNotContain("Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException", result.Error.Message);
         }
 
         [Fact]
