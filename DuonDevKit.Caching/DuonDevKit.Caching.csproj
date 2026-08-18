@@ -17,9 +17,12 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Caching.Hybrid" Version="9.10.0" />
     <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="9.0.19" />
-    <!-- CI's clean restore resolves a >= 10.0.11 floor for this package that a local restore
-         (warmer NuGet cache) doesn't surface — pin at least that high to avoid NU1605. -->
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.11" />
+    <!-- Microsoft.Extensions.Caching.Hybrid 9.10.0 pulls in Microsoft.Extensions.Logging.Abstractions
+         9.0.19, which itself needs Microsoft.Extensions.DependencyInjection.Abstractions >= 9.0.19 — a
+         clean restore fails NU1605 below that floor even though a warm NuGet cache can mask it locally.
+         Pinned at the exact floor (9.0.19) rather than a higher round number so this stays as close as
+         possible to the 9.0.18 the rest of the package family (Core/EntityFrameworkCore/Dapper) uses. -->
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.19" />
   </ItemGroup>
 
   <ItemGroup>
