@@ -34,7 +34,7 @@
          net9.0 builds (Microsoft.Extensions.DependencyInjection.Abstractions has native net8.0/net9.0
          assets too, but there's no need to split — one version keeps Dependabot bumps to one line
          instead of two independently-drifting pins). -->
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.18" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.11" />
   </ItemGroup>
 
 </Project>

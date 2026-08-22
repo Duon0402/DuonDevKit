@@ -19,7 +19,7 @@
          and net9.0 builds — no need for a per-TFM version split (unlike Microsoft.AspNetCore.*
          packages, which are single-TFM per major version; see DuonDevKit.Jwt.csproj). -->
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.18" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.18" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.11" />
   </ItemGroup>
 
   <ItemGroup>
